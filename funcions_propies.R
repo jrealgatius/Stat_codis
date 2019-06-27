@@ -1,0 +1,3917 @@
+##########################################################
+# Llista de FUNCIONS PROPIES per:                        #
+# Organitzar / simplificar l'analisi de dades            #
+#                                                        #
+# Author: Jordi Real Gatius                              #
+# E-mail: jordireal@gmail.com                            #
+##########################################################
+
+
+# Funcions propies LLEPALI Project  -------------------------------
+# Jordi Real
+# jordireal@gmail.com
+
+list.of.packages <- c("compareGroups","survminer", "data.table","MatchIt","survival","dplyr","lubridate","purrr","stringr","readxl","Hmisc","knitr","SNPassoc","DiagrammeR","pROC","ResourceSelection")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+
+
+# Llibreries necessaries 
+library("data.table")
+library("SNPassoc")
+library("htmlwidgets")
+library("compareGroups")
+library("foreign")
+library("lattice")
+library("Hmisc")
+# library("ggplot2")
+library("pander")
+library("readxl")
+library("knitr")
+library("data.table")
+library("MatchIt")
+library("survival")
+library("dplyr")
+# library("survminer")
+library("purrr")
+library("stringr")
+library("tidyr")
+
+
+#
+#
+#  Canviar directori de treball subdirectori ------------
+
+directori_treball<-function(subdirectori,directori) {
+  
+  # directori=c("C:/Users/Jordi/Google Drive",
+  #              "C:/Users/usuari/Google Drive",
+  #              "C:/Users/43728088M/Google Drive",
+  #              "C:/Users/jreal/Google Drive",
+  #              "D:/Google Drive")
+  # subdirectori="CIBERDEM/GEDAPS/Cohort_RD"
+  
+  # directori[file.exists(directori)] %>% 
+  
+    pp<-file.path(directori[file.exists(directori)],subdirectori)
+    setwd(pp)
+  
+
+}
+
+
+#
+#  Etiquetar les variables de les dades      #####
+###
+etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio") {
+  
+  # d=dades
+  # taulavariables = conductor_variables
+  # camp_descripcio="descripcio"
+
+  ####  Llegir etiquetes i variables a analitzar ####
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+
+  # selecciono els camps necessaris (camp i descripcio)
+  
+  camp_descripcio<-sym(camp_descripcio)
+  
+  variables<-variables %>% select(camp,descripcio=!!camp_descripcio)
+
+  #
+  ###################################   etiquetar variables         
+  seleccio<-variables
+  camp<- as.vector(seleccio$camp) #
+  descripcio<- as.vector(seleccio$descripcio) #
+  ### etiquetar variables seleccionades     #
+  for (i in 1:length(descripcio)){if (any(colnames(d) == camp[i])) {Hmisc::label(d[[camp[i]]]) <- descripcio[i]}}
+  d
+}
+
+
+#  Etiquetar valors        ------------------------------------------
+
+##    Retorna Data frame etiquetat en funció d'un conductor ##
+## dataframe dades, conductor_variables     
+etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla="etiquetes",
+                           camp_etiqueta="etiqueta"){
+  
+  # dt=dades
+  # variables_factors=conductor_variables
+  # fulla="etiquetes"
+  # camp_etiqueta="etiqueta"
+  
+  # Llegir conductor#
+  variables_factors<-readxl::read_excel(variables_factors,sheet=fulla)
+  #
+ 
+  # Split
+  camp_etiqueta<-sym(camp_etiqueta)
+  
+  k<-variables_factors%>%select(camp, valor,!!camp_etiqueta)
+  pepe<-k %>% base::split(list(.$camp))
+
+  #
+  noms_variables<-names(pepe)
+  num_vars<-length(noms_variables)
+  
+  for (i in 1:num_vars) {
+    
+  # i<-1
+  
+  if (noms_variables[i] %in% colnames(dt)) {
+    
+    etiquetes_valors<-pepe[[i]] %>% pull(!!camp_etiqueta)
+    
+    dt[noms_variables[i]]<-lapply(dt[noms_variables[i]],function(y) factor(y,levels=pepe[[i]]$valor,labels=etiquetes_valors))
+   }
+  
+  }
+  
+  dt
+  
+  
+  }
+#
+
+
+#  Etiquetar Taula   ------------------
+
+# Llanço taula i camp que vull etiquetar i cambia nom del camp en funció d'etiqueta
+
+etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="variables_R.xls",camp_descripcio="descripcio") {
+  
+  # taula=T3.MI
+  # taulavariables=conductor_variables
+  # camp="variables_taula"
+  # camp_descripcio="descripcio"
+  
+  ####  Llegir etiquetes i variables a analitzar ####
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  #
+  
+  # Canviar nom de camp de variables al de la taula 
+  colnames(variables)[colnames(variables)=="camp"] <- camp
+  
+  # Canviar arguments per ser evaluats
+  camp_eval<-sym(camp)
+  camp_descripcio_eval<-sym(camp_descripcio)
+  # Canviar el format de la taula 
+  taula<-taula %>% left_join(select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
+    mutate(!!camp_eval:=descripcio) %>% 
+    select(-descripcio)
+ 
+}
+
+
+
+
+# dades<-etiquetar(dades)
+# dades<-etiquetar(dades,"variables_R.xls")
+
+#  FORMULA A PARTIR DE VARIABLES----------------------
+#####       hi envio la columna de variables amb que vull generar la formula pel compare
+formula=function(x="taula1",y="grup",eliminar=c("idp",y)) {
+  pepito<-paste("as.vector(variables[variables$",x,"==1,]$camp)[!as.vector(variables[variables$",x,"==1,]$camp)%in%eliminar]",sep="")
+  llistataula<-eval(parse(text=pepito))
+  y<-as.formula(paste(y, paste(llistataula, collapse=" + "), sep=" ~ "))
+}
+
+#  FORMULA MILLORADA --------------------------
+#
+# Te en compte l'Ordre que està posada en el conductor taulavariables
+#
+#
+formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="variables_R.xls") {
+  
+  # x="T1_GSK"
+  # y="."
+  # taulavariables ="VARIABLES.xls"
+  # elimina=c("IDP")
+  
+  # 1. Llegir conductor analisis 
+  
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  
+  # 2. DATA table filtrar ordenar llista de camps
+  polio<-data.table::data.table(variables)
+
+  x<-sym(x)
+  
+  mua<-polio[camp!=elimina] %>% 
+    dplyr::filter(!!x>0) %>% 
+    dplyr::arrange(!!x) %>% 
+    dplyr::select(camp) %>% as.vector()
+  
+
+  # 3. Generar formula
+  
+  # y<-as.formula(paste(y, paste(llista$camp, collapse=" + "), sep=" ~ "))
+  
+  y<-as.formula(paste(y, paste(mua$camp, collapse=" + "), sep=" ~ "))
+  
+  y
+  
+}
+
+#  Llistat de taules a partir de Llista de factors de Y's i em retorna una llista de taules -----
+llista.compare.Ys<-function(dt=dades,llista.y=c("CODGLP1","CKDEPI_cat2"),llista.x=c("canvi612.pes.perc","canvi612M.pes"),show.ratio=F,byrow=T,show.n=T,show.all=T,show.descr=T,digits=NA,digits.ratio=NA,hide.no = c('NA','No'),ref.no=NA){
+  
+  # dt=dt.matched
+  # llista.y = c("event")
+  # llista.x=llistaPS
+  # show.ratio=F
+  # byrow=T
+  
+  restab.llista<-list()
+  
+  # 3. Generar formula
+  
+  for (i in 1:length(llista.y)) {
+    
+    # i<-1
+    
+    restab.llista[[i]]<-as.formula(paste(llista.y[[i]], paste(llista.x, collapse=" + "), sep=" ~ ")) %>% 
+      compareGroups(data=dt,include.miss = F,include.label=T,byrow = byrow,ref.no=ref.no) %>% 
+      createTable(show.ratio = show.ratio , hide.no = hide.no, show.p.overall=T,show.n=show.n,show.all=show.all,show.descr=show.descr,digits=digits,digits.ratio=digits.ratio)
+    
+  }
+  
+  restab.llista
+  
+}
+
+
+#  Selector de Variables      -------
+#
+selectorvariables=function(taula="table1",taulavariables="variables_R.xls",dt=dadestotal) {
+  
+  # taula = "dades_imputacio2" 
+  # taulavariables="variables_v2.xls"
+  # dt=dades_test 
+  
+  vector_variables<-extreure.variables(taula=taula,taulavariables = taulavariables)
+  
+  # Selecciono les que no existeixen en DT 
+  variables.no.existeixen<-vector_variables[!is.element(vector_variables,names(dt))]
+  
+  # Elimino les que no existeixen
+  vector_variables<-vector_variables[is.element(vector_variables,names(dt))]
+  moco<-dt %>% dplyr::select_at(vector_variables)
+  print(paste0("Llista de variables que no existeixen en el dataset:",paste0(variables.no.existeixen ,collapse = ", ")))
+  
+  moco
+  
+
+}
+
+
+#  Selector de variables TAULA DE--------
+#
+extreure.variables=function(taula="table1",taulavariables="variables_R.xls") {
+  
+  # taula="dates"
+  # taulavariables = conductor_variables
+  
+  ####  Llegir etiquetes i variables a analitzar ####
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables[is.na(variables)]<- 0
+
+  taula<-sym(taula)
+  
+  # filtratge 
+  kk<-variables %>% dplyr::filter(!!taula>0) %>% arrange(!!taula) %>% dplyr::select(camp) %>% as.vector()
+  kk<-as.vector(kk[[1]])
+  purrr::set_names(kk,kk)
+  
+
+}
+
+#  factoritzar NO.Yes  ------------------
+##########      factoritzar NO.Yes llista de variables "factor" situades a la taulavariables camp=factor
+factoritzar.NO.YES<-function(dt=dadesDF,columna="factor",taulavariables="variables_FELIPE.xls"){
+  
+  # dt=dades
+  # columna="factor.YESNO"
+  # taulavariables=conductor_variables
+  
+  # Extreure variables  
+  x<-extreure.variables(taula=columna,taulavariables=taulavariables) 
+  
+  # Seleccionar només variables que estan en dt
+  if (!x[!x%in%names(dt)] %>% length()<1) {print("No existeixen en dt:");print(x[!x%in%names(dt)])}
+  
+  # Selecciono nomes les vars en bdades
+  x<-x[x%in%names(dt)]
+  
+  ###   Factoritzar-les
+  dt[x]<-lapply(dt[x],function(y) factor(y,levels=c(0,1), labels=c("No","Yes")))
+  dt
+  
+  
+  
+}
+
+#  Recodifico EN FUNCIÓ DE UN CAMP -------------------
+### RETORNA DADES AMB RECODIFICACIÓ 
+
+#  Recodifico EN FUNCIÓ DE de llista de camps  -------------------
+### RETORNA DADES AMB RECODIFICACIÓ 
+
+recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1",missings=F,prefix=NA){
+  
+  # dt=dades
+  # taulavariables = conductor_variables
+  # criteris = "recodes"
+  # missings=F
+
+  ##  Llegeix criteris de variables 
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  
+  criteris_sym<-sym(criteris)
+  variables<-variables %>% dplyr::filter(!!criteris_sym!=0)
+
+  ##  0. Filtro taula variables només variables implicades en el filtre i el genero 
+  caracter_quartil<-"Q"
+  
+  maco<-variables %>% 
+    dplyr::select(camp,criteris) %>% 
+    filter(!str_detect(eval(parse(text=criteris)), caracter_quartil))
+  
+  ## Generar recodificació en base info
+  maco_lista<-maco %>% base::split(list(.$camp))
+  num_recodes<-length(maco_lista)
+  
+  # Assignar a primer element (A partir d'aquí fer un for)
+  
+  for (i in 1:num_recodes) {
+    
+    # i<-2
+    
+    maco<-maco_lista[[i]]
+    
+    mamon<-stringr::str_split(maco[criteris],"/") %>% 
+      unlist() %>% 
+      as.numeric()
+    mamon<-c(-Inf,mamon,Inf)
+    
+    ##### Fer la recodificació en base el rang generat 
+    nomcamp<-maco["camp"] %>% as.character()
+    nomrecode<-paste0(nomcamp,".cat",length(mamon))
+    
+    if (!is.na(prefix)) {nomrecode<-paste0(nomcamp,".cat",prefix,length(mamon)) }
+    
+    # Si la variables ja existeix la elimino i la sobrescric
+    if (nomrecode%in%names(dt)) {dt<-dt %>% select_(paste0("-",nomrecode))}
+    
+    dt<-dt %>% mutate_(camp=nomcamp)
+    dt<-dt %>% mutate(popes=cut(camp,breaks = mamon))
+
+    # Si missings --> generar a una categoria missing
+    if (missings==T) {dt<-missings_to_level(dt,"popes")}
+    
+    
+    colnames(dt)[colnames(dt)=="popes"] <- nomrecode
+    dt<-dt %>% select(-camp)
+  
+    print(paste0("Generada: ",nomrecode))
+  
+  }
+  
+  dt
+  
+}
+
+#  missing_to_level (Recodifica variable amb una categoria missing)  -------
+
+missings_to_level<-function(dades,variable="popes") {
+  
+  # dades=temp
+  # variable="val_CKDEPI.cat5"
+  
+  # Subset columnes de d
+  d_temp<-dades %>% select_("temp"=variable)
+  
+  # names(dt)[names(dt)==variable]<-"variable_temporal"
+  # dt<-dt %>% rename_("variable_temporal_provisional"=variable)
+  
+  levels_nous <- levels(d_temp$temp)
+  levels_nous[length(levels_nous) + 1] <- "None"
+  
+  d_temp$temp<-factor(d_temp$temp,levels = levels_nous)
+  d_temp$temp[is.na(d_temp$temp)]<-"None"
+  
+  #
+  dades <- dades %>% select_(paste0("-",variable))
+  
+  # Canviar el nom al origen 
+  names(d_temp)[names(d_temp) == "temp"] <- variable
+  
+  dades <-cbind(dades,d_temp)
+  
+}
+
+
+#  formula COX ajustat per event="Yes" -------------
+#
+###       incorpora efecte cluster
+
+###       incorpora variables a evaluar a=Llista de variables a avaluar     ###
+
+formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls") {
+  
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables[is.na(variables)]<- 0
+  variables<-variables %>% arrange_(x)
+  
+  pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
+  
+  llistataula<-eval(parse(text=pepito))
+  if (a!="") llistataula<-c(llistataula,a)
+  
+  # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Si'))")
+  # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Yes'))")
+  resposta<-paste("Surv(",temps,", as.integer(",event,"=='1'))")
+  
+  #
+  if (cluster!="") kk<-paste(paste(llistataula,collapse=" + "),paste("cluster(",cluster,")",sep=""),sep="+")
+  if (cluster=="") kk<-paste(llistataula,collapse=" + ")
+  #
+  # y<-as.formula(paste(resposta, paste(llistataula, collapse=" + "), sep=" ~ "))
+  if (sum(elimina==llistataula)>0) y<-as.formula(paste(paste(resposta, kk , sep=" ~ "),elimina,sep=" - "))
+  if (sum(elimina==llistataula)==0) y<-as.formula(paste(resposta, kk , sep=" ~ "))
+  #
+  
+  y
+  
+}
+
+#  Hadj retorna Ngran, Events, coef, HR, IC95, IC95, se.coef, p ---------
+
+HRadj=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",c="",d=dadesDF,taulavariables="variables.xls") { 
+  pepito<-paste("sum(d$",t,")",sep="")
+  PT<-eval(parse(text=pepito))
+  
+  if (c=="") posicio_p=5
+  if (c!="") posicio_p=6
+  
+  result=tryCatch({
+    pp<-coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables),data=d)    
+    
+    cbind(PT.Year=PT/365.25,
+          N=pp$n,
+          EVENTS=pp$nevent,
+          coef=summary(pp)$coef[1,1],
+          HR=summary(pp)$coef[1,2],
+          IC951=summary(pp)$conf.int[1,3],
+          IC952=summary(pp)$conf.int[1,4],
+          se.coef=summary(pp)$coef[1,3],
+          p=summary(pp)$coef[1,posicio_p])}
+    
+    ,error = function(e)  {
+      cbind(PT.Year=PT/365.25,
+            N=0,
+            EVENTS=0,
+            coef=NA,
+            HR=NA,
+            IC951=NA,
+            IC952=NA,
+            se.coef=NA,
+            p=NA)}
+    
+  )
+  result
+}
+
+#  HRestratificats  ----------------------
+###   FUNCIiÓ QUE LLANÇO event, temps adjusted i em retorna un data frame amb tot global+ estratificat  ###
+###     ENVIO exitus, temps i dades i em retorna data frame amb estratificats
+####    camp estratificat conte variables estratificades tipo="v.ajust" / "crude"
+HRestratificats<-function(event="exitus",t="temps",tipo="v.ajust",c="",taulavariables='variables.xls') {
+  
+  HRestratificats=data.frame()
+  outDf<-data.frame(Subgroup="Total",HRadj(x=tipo,event=event,t=t,d=dades,c=c))
+
+  variables2 <- data.frame(readxl::read_excel(taulavariables))
+  variables2[is.na(variables2)]<- 0
+  
+  # row.names(outDf)<-label(dades$exitus)
+  row.names(outDf)<-eval(parse(text=paste("Hmisc::label(dades$",event,")",sep="")))
+  
+  HRestratificats <-rbind(HRestratificats,outDf)
+  
+  N<-length(variables2[variables2$estrat==1,]$camp)
+  
+  for (i in 1:N) {
+    outDf <-ddply(dades, variables2[variables2$estrat==1,]$camp[i], function(df)  HRadj(x=tipo,event=event,t=t,d=df,c=c))
+    
+    row.names(outDf)<-c(paste(Hmisc::label(eval(parse(text=paste("dades$",names(outDf)[1],sep="")))),"Adj1",sep=""),
+                        paste(Hmisc::label(eval(parse(text=paste("dades$",names(outDf)[1],sep="")))),"Adj2",sep=""))
+    names(outDf)[1]<-paste("Subgroup")  
+    
+    HRestratificats <-rbind(HRestratificats,outDf)
+    
+  }
+  #   retorna 
+  return(HRestratificats)
+}
+
+
+#  Formula.LOGIT segons LLISTA DE VARIABLES  D'AJUST     #######################
+#      hi envio la columna de variables amb que vull generar la formula pel compare
+
+#####     x= variables d'ajust / y = resposta / eliminar /  a = Avaluar 
+
+formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls') {
+  
+  # x="regicor_alone"
+  # y="event"
+  # taulavariables = conductor_variables
+  # eliminar=c("IDP")
+  # a=""
+
+  # Llegir variables 
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables[is.na(variables)]<- 0
+  
+  x_sym<-sym(x)
+
+  llistataula<-variables %>%
+    dplyr::filter(!!x_sym>0) %>%
+    dplyr::arrange(!!x_sym) %>% 
+    dplyr::filter("camp"!=eliminar) %>% 
+    pull(camp) 
+  
+  if (a!="") llistataula<-c(a,llistataula)
+  
+  y<-as.formula(paste(y, paste(llistataula, collapse=" + "), sep=" ~ "))
+  
+}
+
+#  Formula segos LLISTA DE VARIABLES  D'AJUST     #######################
+#####       hi envio la columna de variables amb que vull generar la formula pel compare
+
+#####     x= variables d'ajust / y = resposta / eliminar /  a = Avaluar 
+
+formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls') {
+
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables[is.na(variables)]<- 0
+  
+  x<-sym(x)
+  
+  variables<-variables %>% 
+    dplyr::filter(!!x>0) %>% 
+    dplyr::arrange(!!x)
+  
+  
+  pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
+  
+
+  llistataula<-eval(parse(text=pepito))
+  
+  # if (a!="") llistataula<-c(llistataula,a)
+  if (a!="") llistataula<-c(a,llistataula,a)
+  
+  y<-paste(y, paste(llistataula, collapse=" + "), sep=" ~ ")
+  
+}
+
+#  formula_vector(vector,y) ##########
+
+formula_vector<-function(vector=c("sex","age"),y="y",logit=F){
+  
+  if (!logit) {formula=as.formula(paste(y, paste(vector, collapse=" + "), sep=" ~ "))}
+  if (logit) {formula=paste0("as.factor(",y,")~ ", paste(vector, collapse=" + ")) %>% as.formula()}           
+  
+  formula
+             
+}
+
+#  OR.ajustats(x,ajust,y)         ###########
+#
+
+OR.ajustats=function(x="lipos",ajust="V.ajust",y="prediabetis",d=dadestotal,taulavariables='variables.xls') {
+  #
+  # d=dades
+  # taulavariables = "VARIABLES.xls"
+  # x="lipos"
+  # ajust="v.ajust"
+  # y="Prediabetes"
+  
+  # d=dades
+  # taulavariables="VARIABLES.xls"
+  # x="lipos2"
+  # ajust="v.ajust"
+  # y="Prediabetes"
+  
+  
+  #
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables[is.na(variables)]<- 0
+  # inicialitzar 
+  num<-paste("length(variables[variables$",x,">0,]$camp)",sep="")
+  num<-eval(parse(text=num))
+  ORadj<-matrix(data=NA,ncol=4,nrow = num)
+  # noms de columnes en matriu ORadj
+  listvariables<-paste("list(variables[variables$",x,">0,]$camp[1:",num,"],c('OR','Linf','Lsup','p valor'))",sep="")
+  dimnames(ORadj)<-eval(parse(text=listvariables))
+  #
+  #### extrec la variable que vull ajustar
+  xtext<-paste("variables[variables$",x,">0,]",sep="")
+  #
+  
+  ##  inicio bucle amb totes les variables que vull ajustar
+  for (i in 1:num) {
+    # i=1
+    xeval<-eval(parse(text=xtext))$camp[i]
+    # genero la forumla del model 
+    # myFormula<-paste(y,"~",xeval,"+",variables.ajust(x=ajust),sep="")
+    
+    myFormula<-formula.LOGIT(x=ajust,y=y,eliminar="",a=xeval)
+    
+    # ajusto models
+    model<-glm(formula= myFormula, family = binomial, data=d)
+    model
+    
+    # extrec Coeficients dels models i IC i coloco dins de ORadj
+    lolo<-cbind(OR=exp(summary.glm(model)$coef[,1]),Linf=exp(summary.glm(model)$coef[,1]-1.96*summary.glm(model)$coef[,2]),Lsup=exp(summary.glm(model)$coef[,1]+1.96*summary.glm(model)$coef[,2]),p_value=summary.glm(model)$coef[,4])
+    ORadj[i,]<-cbind(OR=exp(summary.glm(model)$coef[2,1]),Linf=exp(summary.glm(model)$coef[2,1]-1.96*summary.glm(model)$coef[2,2]),Lsup=exp(summary.glm(model)$coef[2,1]+1.96*summary.glm(model)$coef[2,2]),p_value=summary.glm(model)$coef[2,4])
+    
+  }
+  
+  ORadj<-rownames(ORadj) %>% cbind(ORadj)
+  ORadj<-as_tibble(ORadj)
+  nomscol<-c("Variable","OR","Linf","Lsup","pvalor")
+  ORadj<-ORadj %>% setNames(nomscol)
+  
+  ORadj
+}
+
+
+#  Variables.ajust   -----------------
+#####       hi envio la columna de variables amb que vull generar la formula pel compare
+#             FUNCIO variables.ajust
+variables.ajust=function(x="taula1",variables=variables) {
+  pepito<-paste("as.vector(variables[variables$",x,"==1,]$camp)[!as.vector(variables[variables$",x,"==1,]$camp)%in%c('idp','grup')]",sep="")
+  llistataula<-eval(parse(text=pepito))
+  z<-paste(llistataula, collapse=" + ")
+}
+
+
+#  GLM  COEFICIENTS      ###########################################################
+#################   EXTREU COEFICIENTS glm, IC95 , p valors  GLM a partir de llista d'outcomes, X, i llista de v.ajust 
+extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavariables="variables_R.xls"){
+  
+  # dt=dades
+  # outcomes = "lipos"
+  # x="Prediabetes"
+  # taulavariables ="VARIABLES.xls"
+  # z=""
+  
+  # dt=dades
+  # outcomes="lipos2"
+  # x="HbA1c"
+  # z="age.sex.ajust"
+  # taulavariables="VARIABLES.xls"
+  
+  # Número de categories de X
+  Ncat.x<-sum(table(dt[x])!=0)
+  if (is.numeric(dt[[x]])) Ncat.x=1
+
+  ### Si hi ha variables d'ajust genero llista
+  if (z!="") mam<-names(selectorvariables(z,dt=dt,taulavariables=taulavariables))  ### Genero llista de variables 
+  if (z!="") x<-paste0(paste0(mam,collapse = "+"),"+",x)
+
+  models1_oft<-names(selectorvariables(outcomes,dt=dt,taulavariables=taulavariables))%>%         
+    paste('~',x) %>%
+    purrr::map(~glm(as.formula(.x), data= dt))%>%
+    purrr::map(summary) %>% 
+    purrr::map(coefficients) 
+
+  if (Ncat.x>1) noms_var_X<-models1_oft[[1]] %>% 
+    rownames %>%        #
+    tail(Ncat.x-1)      # Capturo nom categories de X
+  
+  if (Ncat.x==1) noms_var_X<-models1_oft[[1]] %>% 
+    rownames %>% tail(1)
+
+  # names(table(dt[x]))[2:Ncat.x]
+
+  if (Ncat.x==1) models1_oft<-models1_oft %>%                       # Si es continua només un coef de X
+    purrr::map(tail,Ncat.x) %>% 
+    purrr::map_dfr(data.table)
+  
+  if (Ncat.x>1) models1_oft<-models1_oft %>%                          ## Select només num de coeficients necessaris de X
+    purrr::map(tail,Ncat.x-1) %>% 
+    purrr::map_dfr(data.table)
+
+    
+  if (Ncat.x>1) variables<-names(selectorvariables(outcomes,taulavariables,dt=dt)) %>%  ##  Noms dels outcomes 
+    rep(each=Ncat.x-1) %>%                                                ##  Cada Num de coeficients   
+    data.table()      # Outcomes 
+
+  if (Ncat.x==1) variables<-names(selectorvariables(outcomes,taulavariables,dt=dt)) %>%  ##  Noms dels outcomes 
+      data.table()      # Outcomes 
+  
+  colnames(variables)<-"Outcome"
+  
+  
+  models_taula<-cbind(variables,Cat.X=noms_var_X,models1_oft) 
+  
+  models_taula<-models_taula %>% select(-c("t value"))    ## Elimino t value
+  
+  list(coef=models_taula,caption=paste("Coeficient ajustat per:", x))
+  
+  
+}
+
+#  GLM (Logistic o Lineal) dades imputades -------------------- 
+## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
+extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE") {
+  
+  # dt=tempData
+  # outcome="canvi612M.glicadaCAT2"
+  # x="IMC_cat4"
+  
+  # Outcome es factor?
+  outcome_es_factor<-data_long[[outcome]] %>% class=="factor" | data_long[[outcome]] %>% class=="character"
+  
+  # Si Outcome (Y) es factor --> glm-Logistica
+  if (outcome_es_factor) {
+    
+    pepe<-paste0(outcome,"~",x) 
+    resum<-with(tempData,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
+   
+    resum_model<-tibble(categoria=row.names(resum)) %>% 
+      cbind(resum) %>% 
+      mutate(OR=estimate %>% exp,
+             Linf=(estimate-std.error) %>% exp,
+             Lsup=(estimate+std.error) %>% exp)
+      
+      }
+  
+  # Si outcome (Y) es numeric --> GLM lineal
+  if (!outcome_es_factor) {
+    
+    pepe<-paste0(outcome,"~",x) 
+    model_mi<-with(dt,lm(eval(parse(text=pepe))))
+    resum<-summary(mice::pool(model_mi))
+    resum_model<-tibble(categoria=row.names(resum)) %>% cbind(resum)
+  }
+  
+  
+  # Si X  es cat afegir categoria de referencia
+  es_factor<- data_long[[x]] %>% class=="factor" | data_long[[x]] %>% class=="character"
+  num_categories<-data_long[[x]] %>%  table %>% length
+  
+  if (es_factor) {
+    resumtotal<-tibble(categoria=row.names(resum),outcome=outcome) %>% 
+      add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
+  }
+  
+  # Si no es factor
+  if (!es_factor) {resumtotal<-tibble(categoria=row.names(resum),outcome=outcome) }
+  
+  # Afegir categoria 
+  resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
+  
+  # Només en GLM calcular la mitjana estimada per categoria 
+  if (es_factor & outcome_es_factor==F) { 
+    resumtotal<-resumtotal %>% mutate (beta0=resumtotal$estimate[1],estimate=ifelse(is.na(estimate),0,estimate)) %>%  
+      mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
+    }
+  
+  # Seleccionar columnes
+  
+  resumtotal
+  
+}
+
+#  Coeficients GLM(lineal/logistica) MICE estratificats  ---------------------
+# Arguments: Objecte MICE i data_list imputats, vector de X , Y , logit=T/F 
+extreure_coef_mice_estrats<-function(tempData,data_list,X=c("bmi","hyp"),Y="chl",grups="age",logit=F) {
+ 
+  # tempData
+  # data_list
+  # X=X
+  # Y="bmi"
+  # grups="age"
+  # logit=F
+  # .data=data_list[[1]]
+
+  fitting=function(.data,frm,logit=F) {
+    if(logit) {model=glm(frm,data=.data,family=binomial(link="logit"))}
+    if(!logit){model=lm(frm, data =.data)}
+    model
+  }
+  
+  # Cada llista de datasets separat per grups
+  data_list_splitted<-data_list %>% map(~base::split(.x,.x[[grups]]))
+  
+  # numero de grups
+  num_grups<-tempData$data[[grups]] %>% table %>% length
+  
+  # Aplica models n una llista
+  models_list<-lapply(1:num_grups, function(NSPLIT) data_list_splitted %>%
+                        lapply(nth, NSPLIT) %>%
+                        lapply(fitting, formula_vector(X,Y,logit),logit=logit) %>%
+                        mice::as.mira() %>%
+                        mice::pool() %>%
+                        summary() %>% 
+                        tibble::rownames_to_column("variable")) 
+  
+  # Posar noms als grups 
+  names(models_list)<-names(data_list_splitted[[1]])
+  
+  # Ho posa en un data set 
+  models_dt<-bind_rows(models_list, .id = "Grup") %>% as_tibble
+  
+  models_dt
+}
+
+
+
+
+#  K-M   plot #####
+plotKM=function(y=exitus.surv,grup=grup,d=dades,caption="",llegenda=c("No","Yes")) {
+  
+  # y=dadesDF$exitus_surv
+  # grup=dadesDF$hta
+  # d=dadesDF
+  # caption=Hmisc::label(dadesDF$hta)
+  # llegenda=c("No","Yes")
+  
+  y=dadesDF$exitus_surv
+  grup=dadesDF$edad_cat6
+  d=dadesDF
+  llegenda=c("<45", "[45-55)", "[55-65)", "[65-75)", "[75-85)","85+")
+
+  # Basic survival curves
+  p <- survminer::ggsurvplot(survfit(y ~ grup, data = d), data = d,
+                  main = "Survival curve",
+                  title= caption,
+                  size = 0.5,
+                  ylim = c(0,1),
+                  xlim = c(0,60),
+                  break.x.by=12,
+                  xlab = "Time in months",
+                  risk.table = F,
+                  censor.shape="|", censor.size = 1
+                  ,legend.labs=llegenda)
+  p
+}
+
+#  K-M   plot #####
+plotKM_Incidence=function(y=exitus.surv,grup=grup,d=dades,caption="",llegenda=c("No","Yes")) {
+  
+  # caption=""
+  # llegenda=c("No","Yes")
+  # y=dadesDF$exitus_surv
+  # grup=dadesDF$edad_cat6
+  # d=dadesDF
+  # llegenda=c("85+","[75-85)", "[65-75)", "[55-65)", "[45-55)","<45")
+  
+  # Basic survival curves
+  p <- survminer::ggsurvplot(survfit(y ~ grup, data = d), data = d,
+                             main = "Survival curve",
+                             title= caption,
+                             size = 0.5,
+                             ylim = c(0,1),
+                             xlim = c(0,60),
+                             break.x.by=12,
+                             linesize="strata",
+                             xlab = "Time in months",
+                             risk.table = F,
+                             censor.shape=".", 
+                             censor.size = 0.5,
+                             legend.labs=llegenda,
+                             legend="right",
+                             fun="event",
+                             ggtheme = theme_bw(),
+                             palette = c("black","black","black","black","black","black"))
+  p
+}
+
+
+
+
+#  Box-plot -----------------
+boxplot_variables_grup<-function(dt=dades,variables="OFT_WORST",grup="DM", taulavariables="variables_R.xls") {
+  
+  # dt=dades
+  # variables="OFT_WORST"
+  # grup="DM"
+  # taulavariables="variables_R.xls"
+  
+  ###   extrect variables 
+  paco<-extreure.variables(variables,taulavariables=taulavariables)
+  
+  
+  ###   Genero taula llarga
+  popes<-dt %>% 
+    dplyr::select(c(paco,grup)) %>% 
+    gather_(key=variables,value="valor",setdiff(paco, grup)) 
+  
+  
+  ###   FAi ggplot 
+  figura1<-popes %>% ggplot2::ggplot(aes_string(x=variables, y="valor",fill=grup))+geom_boxplot()
+  
+  figura1
+  
+  
+}
+
+#  Figura Spline Y~x per grups  --------------------
+#  Spline Y ~ x (continua) estratificat per grups)
+#  Requereix Y, X, grup y dades 
+
+ggplot_grups<-function(Y="DIS_estatina",dt=dades,X="edat",grup="sexe") {
+  
+  figuragamX<-ggplot(dt, aes_string(x=X, y=Y,group=grup,shape=grup, color=grup))+
+    geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = T)+
+    xlab(Hmisc::label(dades[X]))+
+    ylab(Hmisc::label(dades[Y]))+
+    theme_bw()+
+    labs(colour =grup)+
+    theme(legend.position="none")
+  figuragamX
+}
+
+
+# Retorna un mapa temporal (datainicial-datafinal per grups) Individus a partir de: 
+# dades, datainicial, data final, id, grup color, grup linea, finestra (porca1,porca2)
+
+MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp",grup_color=NA,grup_linea=NA,lim_inf=-Inf,lim_sup=Inf) {
+  
+  # dades=dadestemp
+  # datainicial="dtinclusio"
+  # datafinal="dat_sit_2014"
+  # id="id"
+  # grup_color="sexe"
+  # grup_linea="sc_bcn"
+  # lim_inf=-Inf
+  # lim_sup=+Inf
+   
+  if (is.na(grup_linea)) dades<- dades %>% mutate(Overall="Overall")
+  if (is.na(grup_linea)) grup_linea<- "Overall"
+
+  if (is.na(grup_color)) dades<- dades %>% mutate(Overall2="Overall2")
+  if (is.na(grup_color)) grup_color<- "Overall2"
+  
+  # # Configuro limits finestra
+  if (lim_inf==-Inf) porca1<-min(dades %>% pull(datainicial) %>% lubridate::ymd())
+  if (lim_sup==+Inf) porca2<-max(dades %>% pull(datafinal) %>% lubridate::ymd())
+  # # 
+  if (lim_inf!=-Inf) porca1<-lim_inf
+  if (lim_sup!=+Inf) porca2<-lim_sup
+  
+  porca1=lubridate::ymd(porca1)
+  porca2=lubridate::ymd(porca2)
+    
+  # Conversió a Sym per evaluació  
+  datainicial<-rlang::sym(datainicial)
+  datafinal<-rlang::sym(datafinal)
+  id<-rlang::sym(id)
+  grup_color<-rlang::sym(grup_color)
+  grup_linea<-rlang::sym(grup_linea)
+  
+  # Calculo dies de duració  
+
+  dades<-dades %>% 
+    mutate(
+      dia0=lubridate::ymd(!!datainicial),
+      diaf=lubridate::ymd(!!datafinal),
+      days_duration=lubridate::interval(dia0,diaf) %>% lubridate::as.duration()/lubridate::ddays()
+      )
+
+  # Gráfico el tema
+  ggplot(dades,aes(x =dia0,y =!!id, color=!!grup_color,group=!!grup_linea,linetype=!!grup_linea))+
+
+    geom_segment(aes(x =dia0, xend=diaf, y =!!id, yend = !!id),arrow = arrow(length = unit(0.03, "npc"))) +
+    geom_point(aes(dia0, !!id)) + 
+    geom_text(vjust = -0.5, hjust=0, size = 3,aes(x =dia0, y = !!id,label = paste(round(days_duration, 2), "days")))+
+    scale_colour_brewer(palette = "Set1")+
+    xlim(porca1,porca2)+
+    theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
+
+  
+  
+  
+}
+
+# Retorna llista amb dos data_frames de farmacs i dos plots pre i post 
+
+Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
+  
+  # dt=temp_dades
+  # K=14
+  # Nmostra=5
+  # finestraX=c(NA,NA)
+  # llavor=123
+  
+  # if (Nmostra==Inf) Nmostra=10
+  
+  farmacs_list<-dt %>%distinct(agr)%>%dplyr::pull()
+  
+  dt<-dt%>% mutate(agr=factor(agr))
+  set.seed(llavor) # S'ha d'actualitzar 
+  id_sample<-dt %>% distinct(idp) %>%sample_n(size=Nmostra) 
+  dt<-id_sample %>% left_join(dt,by="idp") 
+  dt<-dt%>%select(idp,agr,data=dat,datafi,FACTPRESC=tipus)   
+  
+  # Calculo dies de duració  
+  dt<-dt %>% 
+    mutate(
+      data=lubridate::ymd(data),
+      datafi=lubridate::ymd(datafi),
+      days_duration=lubridate::interval(data,datafi) %>% as.duration()/ddays())
+  
+  dt<-dt %>% mutate (idp2=idp, idp=paste0(idp,agr,".",str_sub(FACTPRESC,1,1)))
+  
+  dt<-dt%>%select(idp,agr,data,datafi,days_duration,idp2,FACTPRESC)  
+  # Genera mapa origen (n) 
+  
+  dt<-dt %>% mutate (idp_temp=paste0(stringr::str_sub(dt$idp,1,6),agr,".",str_sub(FACTPRESC,1,1)))
+  
+  
+  if (is.na(finestraX[1]))  porca1<-lubridate::ymd(min(dt$data))
+  if (is.na(finestraX[2]))  porca2<-lubridate::ymd(max(dt$datafi))
+  if (!is.na(finestraX[1])) porca1<-lubridate::ymd(finestraX[1])
+  if (!is.na(finestraX[2])) porca2<-lubridate::ymd(finestraX[2])
+  
+  dt<-dt %>% mutate(datafi =case_when(porca2<=datafi ~ porca2,TRUE ~ datafi))
+  
+  # Recalcular intervals en dies a partir de les finetres!
+  dt<-dt%>%mutate(days_duration=interval(data,datafi)%>%as.duration()/ddays())
+  
+  MAP<-MAP_ggplot(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp",grup_color="agr",grup_linea="FACTPRESC",lim_inf=porca1,lim_sup=porca2)
+  
+  
+  dt<-dt%>%arrange(idp,data,datafi)
+  dt<-mutate(dt,data=ymd(data),datafi=ymd(datafi))
+  dt<-dt%>%group_by(idp)%>% mutate(gap=(data-lag(datafi)))
+  dt<-dt%>%mutate(gap2=case_when(gap>K ~1, TRUE ~0))
+  dt<-dt%>%group_by(idp)%>%mutate(gap3=(cumsum(gap2)))%>%ungroup()
+  
+  # Agregate 
+  dt2<-dt %>% 
+    select(idp,data,datafi,gap3,agr,idp2, FACTPRESC) %>%
+    group_by(idp,agr,gap3)%>%
+    summarise(data= min(data), datafi= max(datafi),idp2=min(idp2),FACTPRESC=min(FACTPRESC))%>% 
+    ungroup
+  # 
+  
+  # Tornem a Recalcular intervals en dies a partir dels Gaps i Fienstra!. 
+  dt2<-dt2%>%mutate(days_duration=interval(data,datafi)%>%as.duration()/ddays())
+  
+  
+  dt2<-dt2 %>% mutate(idp_temp=paste0(stringr::str_sub(dt2$idp,1,6),agr,".",str_sub(FACTPRESC,1,1)))
+  
+  
+  MAP2<-MAP_ggplot(dades=dt2,datainicial="data",datafinal="datafi",id="idp_temp",grup_color="agr",grup_linea="FACTPRESC",lim_inf=porca1,lim_sup=porca2)
+  
+  
+  
+  #MAP2
+  
+  dt2<-dt2 %>% select(idp2,idp,agr,data,datafi,FACTPRESC)
+  
+  #dt2
+  
+  list(dades1=dt,dades2=dt2,Mapa_pre=MAP,Mapa_post=MAP2)
+  
+  
+}
+# 
+
+
+
+
+#  Analitiques (Y=Individu, X=data, Tamany=Valor, Color=tipus analitica) -----------------
+#
+MAP_punts_ggplot<-function(
+  dt=mostra50,
+  id="idp",
+  datainicial="dat",
+  val="val",
+  grup_color="agr",
+  Nmostra=Inf,
+  llavor=123,
+  finestraX=c(-Inf,+Inf),
+  id_AGG=F
+) 
+{
+  
+  # dt=VARIABLES
+  # id="idp"
+  # datainicial ="dat"
+  # val="val"
+  # grup_color = "cod"
+  # Nmostra = 2
+  # finestraX=c(-Inf,+Inf)
+  # llavor=126
+  # id_AGG=T
+  
+  
+  if (finestraX[1]==-Inf) porca1<-min(dt %>% pull(datainicial))  %>% ymd()
+  if (finestraX[2]==+Inf) porca2<-max(dt %>% pull(datainicial))  %>% ymd()
+  
+  if (finestraX[1]!=-Inf) porca1<-finestraX[1] %>% ymd()
+  if (finestraX[2]!=+Inf) porca2<-finestraX[2] %>% ymd()
+
+
+  # Interpretacio com a parametre
+  grup_color<-rlang::sym(grup_color)
+  datainicial<-rlang::sym(datainicial)
+  id<-rlang::sym(id)
+  val<-rlang::sym(val)
+  
+  # Converteix data a data inicial 
+  dt<-dt %>% mutate(dat=ymd(!!datainicial))
+  
+  # Cal estandarditzar valor 
+  
+  # Llista de nombre d'analitiques
+  analitiques_list<-dt%>%distinct(!!grup_color)%>%dplyr::pull()
+  
+  set.seed(llavor) # S'ha d'actualitzar
+  # 
+  id_sample<-dt %>% distinct(!!id) %>% sample_n(size=Nmostra)
+
+  dt<-id_sample %>% left_join(dt,by=quo_name(id)) # 
+  
+  
+  # Construccio del identificador id-grup 
+  
+  if (id_AGG){
+    dt<-dt%>%mutate(id_plot=paste0(stringr::str_sub(!!id,1,6),!!grup_color),id_num=as.numeric(factor(!!id)))
+    } 
+  if (id_AGG ==F) {
+    dt<-dt%>%mutate(id_plot=paste0(stringr::str_sub(!!id,1,6)),id_num=as.numeric(factor(!!id))) }
+  
+  ggplot(dt,aes(x =!!datainicial,y =id_plot,color=!!grup_color))+
+    geom_point(aes(!!datainicial, id_plot)) +
+    geom_point(aes(size = !!val))+
+    labs(title = "Històric de determinacions")+theme(plot.title = element_text(size=30,hjust = 0.5))+
+    
+    theme(axis.text = element_text(colour = "black",size = 10))+  
+    theme(panel.grid.major = element_line(colour = "grey80",size=0.001))+
+    theme(axis.line = element_line(colour = "black",size = 0.9))+  
+    
+    scale_colour_brewer(palette = "Set1")+
+    xlim(porca1,porca2)+  
+    geom_text(vjust = -0.5, hjust=0, size = 3,aes(x =!!datainicial, y =id_plot,label = paste(round(!!val, 2),""))) +
+    theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))+
+    scale_y_discrete(breaks= dt %>% pull(id_plot),labels=dt %>% pull(id_num))
+    # 
+  
+}
+
+
+#  Analitiques (Y=Individu, X=data, Tamany=Valor, Color=tipus analitica) -----------------
+MAP_valor_ggplot<-function(
+  dt=mostra50,
+  id="idp",
+  datainicial="dat",
+  val="val",
+  grup_color="agr",
+  Nmostra=1,
+  finestraX=c(-Inf,Inf),
+  llavor=123
+) 
+{
+  
+  # dt=VARIABLES %>% filter(cod %in% c("HBA1C"))
+  # datainicial ="dat"
+  # id="idp"
+  # val="val"
+  # grup_color = "cod"
+  # Nmostra = 4
+  # finestraX=c(-Inf,Inf)
+  # llavor=126
+  
+  
+  if (finestraX[1]==-Inf) {porca1<-min(dt %>% pull(datainicial)) %>% ymd()}
+  if (finestraX[2]==+Inf) {porca2<-max(dt %>% pull(datainicial)) %>% ymd()}
+  if (finestraX[1]!=-Inf) {porca1<-finestraX[1] %>% ymd()}
+  if (finestraX[2]!=+Inf) {porca2<-finestraX[2] %>% ymd()}
+  
+  
+  # Interpretacio com a parametre
+  grup_color<-rlang::sym(grup_color)
+  datainicial<-rlang::sym(datainicial)
+  id<-rlang::sym(id)
+  val<-rlang::sym(val)
+  
+  # Formatejo a data 
+  dt<-dt %>% mutate(dat=lubridate::ymd(!!datainicial))
+  
+  # Llistat de codis d'analitiques
+  analitiques_list<-dt%>%distinct(!!grup_color)%>%dplyr::pull()
+  
+  set.seed(llavor) # S'ha d'actualitzar
+  
+  # Seleccionar sample 
+  id_sample<-dt%>% distinct(!!id) %>%sample_n(size=Nmostra)
+  dt<-id_sample %>% left_join(dt,by=quo_name(id)) #
+  #
+
+  # Construcció del identificador id-grup 
+  dt<-dt%>%mutate(id_plot=paste0(stringr::str_sub(!!id,1,6),!!grup_color))
+  
+  # Grafica plot de la variable
+  ggplot(dt,aes(x =!!datainicial,y =id_plot,color=id_plot))+
+    
+    geom_line(aes(!!datainicial, !!val))+
+    
+    geom_point(aes(!!datainicial, !!val),color="black")+
+    
+    labs(title = "Evolució de valors")+ theme(plot.title = element_text(size=30,hjust = 0.5))+
+    
+    theme(axis.text = element_text(colour = "black",size = 10))+  
+    theme(panel.grid.major = element_line(colour = "grey80",size=0.001))+
+    theme(axis.line = element_line(colour = "black",size = 0.9))+  
+    
+    scale_colour_brewer(palette = "Set1")+
+    xlim(porca1,porca2)+  
+    
+    geom_text(vjust = -0.5, hjust=0, size = 3,aes(x =!!datainicial, y =!!val,label = paste(round(!!val, 2),""))) +
+    theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
+   }
+
+
+
+#  HR.COX  --------------------
+####      funció que retorna MATRIU-->Ngran, Events, HR, IC951, IC952, p 
+HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls") { 
+  
+  # x="ajust3_obj2"
+  # event="EV_IAM_DIC"
+  # t="temps_EV_IAM"
+  # d=dadestotal
+  # taulavariables = conductor_variables
+  # e=""
+  
+  pepito<-paste("sum(d$",t,")",sep="")
+  PT<-eval(parse(text=pepito))
+  
+  result=tryCatch({
+    pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,taulavariables = taulavariables),data=d)    
+    
+    cbind(N=pp$n,
+          EVENTS=pp$nevent,
+          HRadjusted=summary(pp)$coef[,2],
+          IC951=summary(pp)$conf.int[,3],
+          IC952=summary(pp)$conf.int[,4],
+          p=summary(pp)$coef[,5])}
+    
+    ,error = function(e)  {
+      cbind(N=0,
+            EVENTS=0,
+            HRadjusted=NA,
+            IC951=NA,
+            IC952=NA,
+            p=NA)}
+    
+  )
+  result
+}
+
+#  HR CRUS ------------------
+
+HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,variables="variables_R.xls",evento="Si") {
+  
+  # x="Baseline"
+  # event="RD"
+  # t="TEMPS_RD2"
+  # d=dadestotal
+  # variables=conductor_variables
+  # evento="1"
+  
+  bd.camps<-selectorvariables(x,dt=d,taulavariables=variables)
+  camps<-names(bd.camps)
+  num_camps<-length(names(bd.camps))
+  
+  poco<-cbind() 
+
+  for (i in 1:num_camps) {
+    
+    # i<-1
+    
+    xx<-camps[i] 
+    
+    rr<-paste("Surv(",t,", as.integer(",event," == ",evento,"))~",xx,sep="")
+    pp<-coxph(eval(parse(text=rr)),data=d) 
+    
+   
+    mama<-cbind(N=pp$n,
+                EVENTS=pp$nevent,
+                HRcrude=summary(pp)$coef[,2],
+                IC951=summary(pp)$conf.int[,3],
+                IC952=summary(pp)$conf.int[,4],
+                p=summary(pp)$coef[,5])
+    
+    rownames(mama)<-names(pp$coefficients)
+    poco<-rbind(poco,mama)
+  }
+  
+  poco
+  
+}
+
+#################     FUNCIO PER EXTREURE CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades 
+extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls") {
+  
+  # var1="HbA1c"
+  # var="lipos2"
+  # d="dades"
+  # taulavariables="VARIABLES.xls"
+  
+  ##  Llegeix criteris de variables 
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  
+  llistavariables<-eval(parse(text=paste("variables$camp[variables$",var,">0]",sep="")))
+  
+  # llistavariables<-variables$camp[variables$var==1]
+  x<-eval(parse(text=paste(d,"$",var1,sep="")))
+  
+  ppp<-cbind()
+  for (i in 2:length(llistavariables)) {
+    
+    var2<-paste(d,llistavariables[i],sep="$")
+    y<-eval(parse(text=var2))
+    cor.test(x,y)$estimate
+    correlacio<-cor.test(x,y)$estimate
+    pvalor<-cor.test(x,y)$p.value
+    
+    pp<-cbind(correlacio,pvalor)
+    row.names(pp)<-llistavariables[i]
+    ppp<-rbind(ppp,pp)
+  }
+  
+  ppp
+}
+
+#  Extreure OR (segons formula, i dades)  --------------------
+#       LLANÇO UNA FORMULA les dades per executar un model i retorno OR , CI95% i p-valor en una matriu
+
+extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strata="caseid") {
+  
+  # formu<-formula.LOGIT(x="article.model",y="canvi312M.GLICADA.inputCAT2",taulavariables='variables_v2.xls')
+  # dades=tempData
+  
+  # formu=formu_text
+  # dades=dades
+  # conditional=conditional
+  # strata=strata
+  
+  
+  dades_resum<-as_tibble()
+  
+  # Si dades NO son dades imputadesl
+  if (class(dades)[1]!="mids") {
+  
+    
+  # Model logistic / logistic condicional  
+  if (conditional==F) {
+    fit<-stats::glm(formu, family = binomial, data=dades)
+      } else {
+    
+      formu<- paste0(formu,"+ strata(",strata,")")
+      fit<-survival::clogit(as.formula(formu),data=dades)}
+    
+    my_coefficients <- fit %>% coef 
+    ci<-fit %>% confint 
+  
+    OR<-my_coefficients %>% exp()
+    OR_linf<-ci %>% exp()
+    pvalors<-coef(summary(fit))[,'Pr(>|z|)']
+  
+    coeficients<-cbind(OR,OR_linf,pvalors) %>% as_tibble
+  
+    ret_val <- tibble::enframe(row.names(ci)) %>% bind_cols(coeficients)
+    
+    colnames(ret_val) <- c("id","Categoria","OR","Linf", "Lsup", "p.value")
+  
+    dades_resum<-ret_val %>% as_tibble
+  
+  }
+  
+  dades_resum
+  
+  # Si son dades imputades tipo mids de MICE
+  if (class(dades)[1]=="mids"){
+    
+    pepe<-paste(formu[2],formu[3],sep='~')
+    
+    resum<-with(tempData,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary () 
+    
+    ret_val<-cbind(categoria=row.names(resum)) %>% cbind(resum) %>% as_tibble
+    
+    # Capturar OR, etc...
+    dades_resum<-ret_val %>% mutate(OR=estimate %>% exp,
+                       Linf=(estimate-std.error) %>% exp,
+                       Lsup=(estimate+std.error) %>% exp) %>% 
+      select(categoria,OR,Linf,Lsup,p.value)
+    }
+  
+  dades_resum
+  
+}
+
+
+# Taula variables segons formula i dades genera la taula de coeficients  
+generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) {
+  
+  taula_editada<-
+    all.vars(formu)[-1] %>% 
+    map(~paste0(.x,levels(dades[[.x]]),"/",.x)) %>% 
+    unlist() %>% 
+    tibble() %>% rename("var"=".") %>% 
+    separate(col=var, into=c("Categoria","Variable"), sep = "/") %>% 
+    mutate(nivell=stringr::str_remove(Categoria,Variable),
+           tipo=if_else(nivell=="","Continua","Cat"))
+}
+
+
+# Retorno model amb ORs, curva ROC , auc IC95% etc... a partir de formula glm , i dades 
+
+extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
+  
+  # x="regicor_alone"
+  # y="event"
+  # taulavariables=conductor_variables
+  # dades=dades_temp
+  # elimina=c("IDP")
+  # a=""
+  # valor_outcome=1
+  # conditional = T
+  # strata = "caseid"
+  
+  formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
+  formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
+  
+  resposta<-all.vars(formu)[1]
+  fit<-stats::glm(formu, family = binomial, data=dades)
+  
+  if (conditional==F) {
+    taula_OR<-extreure_OR(formu=formu,dades,conditional=conditional,strata=strata)
+  } else {
+    taula_OR<-extreure_OR(formu=formu_text,dades=dades,conditional=conditional,strata=strata)
+    fit_c<-survival::clogit(as.formula(paste0(formu_text,"+ strata(",strata,")")),data=dades)
+    
+    }
+  
+  
+  taula_editada<-generar_taula_variables_formula(formu,dades) 
+  
+  # juntar taula_OR + taula editada --> etiquetar i editar 
+  taula_editada<-taula_editada %>% 
+    left_join(taula_OR,by="Categoria") %>%
+    mutate(nivell=if_else(is.na(OR),paste0(" Ref:",nivell),nivell),
+           OR=if_else(is.na(OR),1,OR),
+           Linf=if_else(is.na(Linf),1,Linf),
+           Lsup=if_else(is.na(Lsup),1,Lsup),
+           nivell=stringr::str_trim(nivell)) %>% 
+    filter (!is.na(id)) %>% # Eliminar cat de referencia
+    etiquetar_taula("Variable",taulavariables,"descripcio") %>% 
+    mutate(Variable=if_else(tipo=="Cat",paste0(Variable,":",nivell),Variable)) %>% 
+    select(Categoria=Variable,OR,Linf,Lsup,p.value)
+ 
+  forest_plot<-forest.plot(taula_editada)
+  
+  dades_prediccio<-
+    data.frame(prediccio=predict(fit,dades, type=c("response")),known.truth=dades %>% pull(resposta)) %>% 
+    tibble::as_tibble() %>% 
+    mutate(event=as.numeric(known.truth==valor_outcome)) %>% 
+    filter(!is.na(event) & !is.na(prediccio)) 
+  
+  if (conditional) {
+    predict_clogit<-data.frame(logit_pred=predict(fit_c,type = "lp")) %>% 
+      mutate(prob_pred=boot::inv.logit(logit_pred))
+    
+    dades_prediccio<-dades_prediccio %>% 
+      cbind(predict_clogit) %>% select(-prediccio) %>% rename(prediccio=prob_pred)
+    }
+  
+  g <- pROC::roc(event ~ prediccio, data = dades_prediccio)
+
+  auc=pROC::auc(g)
+  auc_ci=pROC::ci(g) 
+  
+  plot_curve<-
+    ggplot(dades_prediccio, aes(d = event, m = prediccio)) + 
+    plotROC::geom_roc(n.cuts = 0)
+  
+  plot_curve<- plot_curve + 
+    # annotate("text", x = .75, y = .25, label = paste("AUC =", round(plotROC::calc_auc(plot_curve)["AUC"], 2))) +
+    annotate("text", x = .75, y = .25, label = paste("95 CI%:",round(auc_ci[2],2),"-",round(auc_ci[3],2)))
+  
+  HL_test<-ResourceSelection::hoslem.test(dades_prediccio$event, dades_prediccio$prediccio, g = 10)
+  
+  
+  popes<-list(taula_OR=taula_editada,forest_plot=forest_plot,ggplot_ROC=plot_curve,auc=auc,auc_ci=auc_ci,HL_test=HL_test)
+  
+}
+#
+
+
+
+#  Resum d'un data.table (Mitjana, DT, N etc...)  --------------------
+
+######         RESUM D'UN DATA.TABLE 
+
+###   LLANÇO UN DT, VARIABLE I UNA ESTRATIFICACIó I EM TORNA UN DT AMB un resum
+
+### mitjana, DT, N etc... per cada ESTRAT
+
+resum3<-function(dt=dades,x="val_last.HBA1C",estrat="constant"){
+  
+  dt$constant<-1
+  
+  e<-parse(text=x)
+  
+  resum3<-dt[, .(
+    Mean=mean(eval(e),na.rm=T),
+    SD=sd(eval(e),na.rm=T),
+    Nmenor7=sum(eval(e)<7,na.rm=T),
+    Perc_menor7=(sum(eval(e)<7,na.rm=T)/length(which(eval(e) != "NA")))*100,
+    N=length(eval(e))
+  )
+  ,by=estrat]
+  
+  resum3
+} 
+
+#  Resum quanti  -------------------------
+#####     funció que retorna un summary (mean, sd) de y en funció d'un grup
+
+resum_quanti<-function(dt=dades,y="valor_basal.GLICADA",grup="constant") {
+  
+  dt$constant=1
+  
+  # dt=data_long
+  # y="valor_basal.GLICADA"
+  # grup="SEXE"
+  
+  ### extrect p valor 
+  pepito=paste0("summary(aov(",y,"~",grup,",data=dt))[[1]][['Pr(>F)']]",sep="")
+  pvalor<-eval(parse(text=pepito))[1]
+  
+  summ1 <- paste0('mean(', y, ',na.rm=T)')
+  summ2<-paste0('sd(',y,',na.rm=T)')
+  
+  dt %>% dplyr::group_by_(grup) %>% 
+    dplyr::summarise_(mean=summ1,
+               sd=summ2,
+               n="n()") %>% 
+    dplyr::mutate(p=pvalor) %>% 
+    rename("group"=grup)
+  
+}
+
+#  ESTADISTICS RESUMS x grup x estrat ----------------------
+# RETORNA ESTADISTICS RESUMS (mean, sd, p-valor --> ANOVA/t-test) X GRUP  X ESTRAT 
+
+resum_quanti_estrat<-function(dt=dades,y="valor_basal.GLICADA",grup="CODGLP1",estrat="HBA1C_cat4"){
+  
+  # dt=dades
+  # y="valor_basal.GLICADA"
+  # grup="CODGLP1"
+  # estrat="HBA1C_cat4"
+
+  # dt<-dt %>% dplyr::select_if(names(.)%in%c(y,grup,estrat)) select_if no funciona
+  
+  dt<-dt %>% dplyr::select(c(y,grup,estrat))
+  
+
+  if (!"estrat" %in% colnames(dt)) {
+    dt<-dt %>% mutate (overall="Overall")
+    estrat="overall"}
+    
+  dt %>% 
+    tidyr::drop_na(y) %>% 
+    dplyr::group_by_(estrat) %>% 
+    dplyr::do(resum_quanti(dt=.,y=y,grup=grup))
+  
+}
+
+
+#  Resum events  ----------------------
+###################         Llan?o dades, event i temps i me fa un resum 
+
+
+resum_events<-function(dades=dadestotal,evento="RD",temps="temps",valorevent="Si") {
+  
+  # dades=dadesDF
+  # evento="EVENT_MORT2014"
+  # temps="temps_mortalitat"
+  # valorevent="1"
+  # dades=dades
+  # evento="RD"
+  # temps="TEMPS_RD2"
+
+  Patients=length(dades[[evento]])
+  PYears=sum(dades[[temps]])
+  temps_seguiment=mean(dades[[temps]])
+  N.Events=sum(dades[[evento]]==valorevent)
+  Event.rate=((N.Events/PYears)*100)
+  IA=(N.Events/Patients)
+  resum<-cbind(Patients,PYears,temps_seguiment,N.Events,Event.rate,IA)
+  resum
+}
+
+
+#  Resum events  ----------------------
+resum_events_v2<-function(dades=dades,evento="RD",temps="temps") {
+  
+  # dades=dadestotal
+  # evento="RD"
+  # temps="TEMPS_RD2"
+  
+  Patients=length(dades[[evento]])
+  PYears=sum(dades[[temps]])
+  temps_seguiment=mean(dades[[temps]])
+  N=mean(dades[["N_BREAK"]])
+  min=min(dades[["N_BREAK"]])
+  max=max(dades[["N_BREAK"]])
+  N.Events=sum(dades[[evento]])
+  Event.rate=(N.Events/PYears)*100 
+  IA=(N.Events/Patients)*100
+  
+  ### Fusionar tot 
+  resum<-cbind(Patients,PYears,temps_seguiment,N,min,max,N.Events,Event.rate,IA)
+  resum
+}
+
+#  Resum events per grup  ------------------
+##########              Llanço dades, event, temps , grup i retorno un resum d'events per grups 
+
+resum_events_grup=function(d=dadestotal,evento="RD",temps="TEMPS_RD2",grup="sexe") {
+  
+  # d=dadestotal
+  # evento="RD"
+  # temps="TEMPS_RD2"
+  # grup="sexe"
+  # valorevent="1"
+  
+  pepito=paste0("as.factor(d$",grup,")")
+  dadesgrups<-d %>% split(eval(parse(text=pepito)))
+  
+  temp<- dadesgrups %>% 
+    map(~resum_events_v2(dades=.x,evento=evento,temps=temps)) %>%  
+    map(as.data.frame) %>% 
+    map_df(bind_rows,.id = "Group") %>%  
+    as_tibble()
+  
+}
+
+
+#  Llistat de Taules compare ------------------
+#   LLISTA DE noms de taules i retorna llista de taules comparatives
+
+#    Llanço una LLISTA de noms de taules que estan en el Conductor Variables i em retorna una llista de taules ###
+llistadetaules.compare<-function(tablero=c("taula1","taula2","taula3","taula4","taula5"),y="sexe",variables = "variables.xls",dt=dades){
+  restab.llista<-list()
+  for (i in 1:length(tablero)) {
+    restab.llista[[i]]<-tablero[i] %>% 
+      formula_compare(y=y,taulavariables = variables) %>% 
+      compareGroups(data=dt,include.miss = F,include.label=T) %>% 
+      createTable(show.ratio = F, hide.no = c('NA','No'), show.p.overall=T,show.n=T,show.all=T)
+  }
+  
+  restab.llista
+  
+}
+
+#  P-valors ajustats segons multiple test Comparations desde un objecte Compare groups  ------------------
+
+### Llanço un objecte compare groups i em retorna els p-valors + els ajustats en una taula 
+
+# p.adjust.methods
+# c("holm", "hochberg", "hommel", "bonferroni", "BH", "BY",
+#   "fdr", "none")
+##    Ajust BH 
+# The "BH" (aka "fdr") and "BY" method of Benjamini, Hochberg, and Yekutieli control the false discovery rate, 
+# the expected proportion of false discoveries amongst the rejected hypotheses. 
+# The false discovery rate is a less stringent condition than the family-wise error rate, so these methods are more powerful than the others.
+
+Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.overall",Sig="No") {
+
+  # objecte_compare=T1.3
+  # metodo = "bonferroni"
+  # p="p.mul"
+  # Sig="Si"
+  
+  # 1. Extrect els p-valors 
+  pvalors <- compareGroups::getResults(objecte_compare, p)
+
+  # 2. Taula de p vals 
+  pvals<-data.table(pvalors)
+  
+  # 4. Ajusta p- valors 
+  # pvals$Adjpvalor<-stats::p.adjust(pvalors, method = metodo)
+
+  pvals<-pvals[,1:ncol(pvalors)] %>% map_df(stats::p.adjust,method = metodo)
+
+  # # 5. Punt de tall
+  # pvals<-pvals %>% mutate_all(sigBH=ifelse(Adjpvalor<0.05,"Sig","NS"))
+
+  # 5. Canviar a punts de tall si argument Sig="Yes" 
+  if (any(Sig==c("Yes","Si",1))) pvals<-pvals %>% 
+    mutate_all(funs(ifelse(.<0.05,"Sig","NS")))
+
+  # 3. Posa noms
+  pvals$variable<-row.names(pvalors)
+  
+  pvals %>% select(variable,starts_with('p'))
+  
+  # # 6. Canviar noms
+  # pvals<-pvals %>% setNames(c("P.crude","Variable",paste0("Padj.",substr(metodo, 1,3)), paste0("Sig.",substr(metodo, 1,3))))
+
+}
+
+Pvalors_ajustats_taula<-function(objecte_taula=OR.ajust, p.valors='p valor', metodo="BH") {
+  
+  # objecte_taula=taulacoef
+  # p.valors='P_adj'
+  # metodo="bonferroni"
+  
+  # objecte_taula=pvals
+  # p.valors="p.No vs Yes"
+  # metodo="bonferroni"
+  
+  # 0 Genero noms de l'objecte a crear  
+  nomsnous<-c(names(objecte_taula),paste0(p.valors,".",substr(metodo, 1,3)),paste0(p.valors,".Sig.",substr(metodo, 1,3)))
+  
+  # 1. Extrec p-valors 
+  pvalors <-objecte_taula[[p.valors]]
+  p.num<-pvalors %>% as.numeric()
+  
+  # 2. Calculo els p valors ajustats
+  pvals_adj<-stats::p.adjust(p.num, method = metodo) 
+  
+  # 3. Ho fusiono amb la taula 
+  objecte_taula<-objecte_taula %>% cbind(pvals_adj)
+  
+  # 4. Punt de tall
+  objecte_taula<-objecte_taula %>% mutate (sigBH=ifelse(pvals_adj<0.05,"Sig","NS"))
+  
+  # 6. Canviar noms
+  objecte_taula<-objecte_taula %>% setNames(nomsnous)
+  
+  objecte_taula %>% as_tibble()
+  
+  
+}
+
+
+
+
+
+#  Afegeix dataindex Dinamica o / Constant si no existeix------------
+
+######      Funció que Afegeix dataindex Dinamica o / Constant si no existeix
+
+###     Entra BD Historic i surt BD Historic + dataindex
+
+afegir_dataindex<-function(dt_historic,bd.dindex="20161231") {
+  
+  # dt_historic=dt
+  # bd.dindex="20161231"
+  
+  # Si es una constant generar una columna constant 
+  if (is.numeric(bd.dindex) | is.character(bd.dindex)){
+  rrr<-dt_historic %>% 
+        dplyr::mutate(dtindex=bd.dindex) %>%
+        data.table
+      
+  }
+  
+  # Si es una bd amb data index fusionar data index 
+  if (!(is.numeric(bd.dindex) | is.character(bd.dindex))) {
+  
+  # Fusionar a l'historic la data index movil
+  rrr<-dt_historic %>% 
+      dplyr::inner_join(bd.dindex, by="idp") %>% 
+      rename(dtindex=tidyselect::last_col()) %>% ## Renomenar dtindex (última columna de bd.index)
+      data.table
+  }    
+  
+  rrr
+  
+}
+
+
+#  Agregar analitiques -----------------
+
+####################      FUNCIÓ QUE LLANÇO 1. Data.table, 
+#                                           2. dataindex constant, / o data.frame amb idp + dataindex (caracter) ,
+#                                           3. finestra de temps previ en dies 
+####################      RETORNA UN data.table amb dades agregades
+
+agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=c(-Inf,Inf),sufix = c(".valor", ".dies")){
+  
+  # bd.dindex =bdades_index
+  # finestra.dies=c(-1095,-366)
+  # sufix = c(".valor13a", ".dies13a")
+  # dt<-VARIABLES %>% head(10000)
+
+  #### Afegir + data index (+dtindex) en l'historic de variables
+  
+  print("Afegint dt.index")
+  
+  dt<-afegir_dataindex(dt,bd.dindex)
+  
+  # Convertir dates a numeric
+  print ("Convertir dates a numeric")
+  
+  dt<-dt %>% mutate(dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
+                    dtindex=dtindex %>% as.numeric())
+  
+  ##### filtrar per intervals de dates 
+
+  print("Filtrant dates")
+  
+  dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
+                             dat<= dtindex +finestra.dies[2])
+  
+  print ("Seleccionant unic registre per variable-id")
+  
+  ##  Selecciono un unic registre i agrego amb valor valid més proper dins de la finestra 
+  
+  paco<- dt %>% filter(val!=-9) %>% 
+    dplyr::mutate(dies=dtindex -dat) %>%                                    # Calculo els dies fins data index 
+    dplyr::group_by(idp,dtindex,cod) %>%                                    # Agafo fila tal que dies sigui mínim (Valor mes proper)         
+    dplyr::slice(which.min(dies)) %>%                                       # Fila que els dies sigui més propera a data index
+    dplyr::ungroup()  
+
+  print ("Reshaping")
+  
+  # RESHAPE valors d'Analitiques 
+  analitiques.valor <- paco[,c("idp","dtindex","cod","val")] %>% 
+    tidyr::spread(cod,val)
+  
+  # RESHAPE Dies 
+  analitiques.dies <- paco[,c("idp","dtindex","cod","dies")] %>% 
+    tidyr::spread(cod,dies)
+  
+  print ("Join: valor+dies")
+  
+  # JOINT Valors i dies
+  analitiques.idp<-full_join(analitiques.valor, analitiques.dies, by=c("idp","dtindex"),suffix = sufix)
+  
+  analitiques.idp
+  
+}
+
+#  Agregar_problemes -----------------
+###################     LLANCO PROBLEMES LONG + UNA DATA INDEX / BD ab data index, finestra temporal -> 
+#                       RETORNO UNA TAULA AGREGADA / TAMBÉ POSO LA TAULA CATALEG
+
+agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="DG.",camp_agregador="agr") {
+
+  # dt=PROBLEMES_total
+  # bd.dindex =bdades_index
+  # dt.agregadors=CATALEG
+  # finestra.dies=c(-Inf,0)
+
+  ## afegir en dataindex de BDINDEX si bd.dindex<>""
+  #### Afegir + data index (+dtindex) en l'historic de problemes
+  
+  dt<-afegir_dataindex(dt,bd.dindex)
+  
+  
+  ## filtrar per intervals de dates 
+
+  # Convertir dates a numeric
+  dt<-dt %>% mutate(dat_num=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
+                    dtindex_num=dtindex %>% as.numeric()) %>% as_tibble()
+  
+  
+  ##### filtrar per intervals de dates 
+  dt<-dt %>% dplyr::filter(dat_num>= dtindex_num +finestra.dies[1] & 
+                             dat_num<= dtindex_num +finestra.dies[2])
+  
+  
+  # dt<-dt[data.table::between(
+  #   lubridate::ymd(dat),
+  #   lubridate::ymd(dtindex)+finestra.dies[1],
+  #   lubridate::ymd(dtindex)+finestra.dies[2])]
+  
+  ## Filtrar CATALEG PER CAMP AGREGADOR 
+  camp_agregador_sym<-sym(camp_agregador)
+  
+  dt.agregadors<-dt.agregadors %>% 
+    select(cod,agr=!!camp_agregador_sym) %>% 
+    filter(!is.na(agr))
+
+  ## Capturar agregador 
+  
+  dt.temp<-dt %>% 
+    # camps mínims que necessito per agregar 
+    dplyr::select(c(idp,dtindex,cod,dat)) %>%                                             # Selecciono camps mínims
+    # Capturo Agregador de CATALEG
+    dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%      # Capturo agregador del cataleg
+    # Eliminar duplicats agafant el primer registre (dat minima)
+    # Agrupar= unic reg per idp-agr (mes antic segons data)
+    dplyr::group_by(idp,dtindex,agr) %>%                                                  # Agrupo per idp agr
+    dplyr::slice(which.min(dat)) %>%                                              # Selecciono més antic 
+    dplyr::ungroup() # desagrupo
+  
+    # RESHAPE una data per agregador  
+    # seleccionar camps i Reshape  
+    dt.agregat<-dt.temp %>% 
+      dplyr::select(idp,agr,dat,dtindex) %>%  # Selecciono agregador i data
+    # RESHAPE per agregador i em quedo la data
+      tidyr::spread(agr,dat,sep=".")                                                        # Reshape
+  
+  names(dt.agregat) <- sub("agr.", prefix, names(dt.agregat))   # Afegir prefix en noms de variables 
+
+  dt.agregat
+  
+  
+}
+
+#  Agregar_problemes un sol agregador  -----------------
+###################     LLANCO PROBLEMES LONG + UNA DATA INDEX / Un agregador / BD ab data index, finestra temporal -> 
+#                       RETORNO UNA TAULA AGREGADA / DAta i Codi/ TAMBÉ POSO LA TAULA CATALEG
+
+agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR_TER",bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="") {
+  
+  # dt=PROBLEMES_total
+  # bd.dindex="20161231"
+  # agregador =AGR_CAS
+  # dt.agregadors=CATALEG
+  # finestra.dies=c(-Inf,0)
+  # prefix=""
+  # camp_agregador="AGR_TER"
+  
+  ## afegir en dataindex de BDINDEX si bd.dindex<>""
+  #### Afegir + data index (+dtindex) en l'historic de problemes
+
+  dt<-afegir_dataindex(dt,bd.dindex)
+  
+  ## filtrar per intervals de dates 
+  
+  # Convertir dates() a numeric
+  dt<-dt %>% mutate(
+    dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
+    dtindex=as.Date(as.character(dtindex),format="%Y%m%d") %>% as.numeric()) %>% 
+    as_tibble()
+  
+  ##### filtrar per intervals de dates 
+  dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
+                             dat<= dtindex +finestra.dies[2])
+  
+  # dt<-dt %>% data.table() %>% 
+  #   dt[data.table::between(
+  #   lubridate::ymd(dat),
+  #   lubridate::ymd(dtindex)+finestra.dies[1],
+  #   lubridate::ymd(dtindex)+finestra.dies[2])]
+
+  
+  ## Filtrar CATALEG 
+  camp_agregador_sym<-sym(camp_agregador)
+  
+  dt.agregadors<-dt.agregadors %>% 
+    select(cod,agr=!!camp_agregador_sym) %>% 
+    filter(agr==agregador)
+
+  ## Capturar agregador 
+  
+  dt.temp<-dt %>% 
+    # camps mínims que necessito per agregar 
+    dplyr::select(c(idp,cod,dat)) %>%                                             # Selecciono camps mínims
+    # Capturo Agregador de CATALEG
+    dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%      # Capturo agregador del cataleg
+    # Eliminar duplicats agafant el primer registre (dat minima)
+    # Agrupar= unic reg per idp-agr (mes antic segons data)
+    dplyr::group_by(idp,agr) %>%                                                  # Agrupo per idp agr
+    dplyr::slice(which.min(dat)) %>%                                              # Selecciono més antic 
+    dplyr::ungroup() # desagrupo
+  
+  # RESHAPE una data per agregador  
+  # seleccionar camps i Reshape  
+  dt.agregat<-dt.temp %>% 
+    dplyr::select(idp,agr,dat,cod) %>%  # Selecciono agregador i data
+    # RESHAPE per agregador i em quedo la data
+    tidyr::spread(agr,dat,sep=".")                                                        # Reshape
+  
+  names(dt.agregat) <- sub("agr.", prefix, names(dt.agregat))   # Afegir prefix en noms de variables 
+  
+  dt.agregat
+  
+}
+
+#  agregar_prescripcions ----------------------
+#  Retorna tibble (data.table) amb el temps de prescripció en una finestra o primera data per idp-dataindex / primera data
+#  Arguments: Historic de PRESCRIPCIONS, data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0)  
+#  Requereix:(idp,cod,dat,dbaixa(yyyymmdd)) i Cataleg d'agrupadors amb cod, agr
+# 
+agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregadors=CATALEG,prefix="FP.",finestra.dies=c(0,0),camp_agregador="agr",agregar_data=F){
+  
+  # camp_agregador="agr"
+  # agregar_data=F
+  # dt=FX.PRESCRITS
+  # prefix = "FD."
+  # bd.dindex =bdades_index
+  # finestra.dies=c(-45,-45)
+  # dt.agregadors=CATALEG
+  
+  
+  # Recode numeros infinits
+  finestra.dies=ifelse(finestra.dies==+Inf,99999,finestra.dies)
+  finestra.dies=ifelse(finestra.dies==-Inf,-99999,finestra.dies)
+
+  ## afegir en dataindex de BDINDEX si bd.dindex<>""
+  #### Afegir + data index (+dtindex) en l'historic de problemes
+  dt<-afegir_dataindex(dt,bd.dindex)
+  
+  ##### Arreglar dades
+  dt<-dt %>% mutate(
+    dat=lubridate::ymd(dat),
+    dbaixa=ifelse(is.na(dbaixa),30160101,dbaixa),
+    dbaixa=lubridate::ymd(dbaixa),
+    dtindex=lubridate::ymd(dtindex))
+  
+  ## arreglar CATALEG 
+  dt.agregadors<-dt.agregadors %>% select_("cod","agr"=camp_agregador)
+  dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
+  
+  prescripcions_agr<-dt %>% 
+    dplyr::select(idp,dtindex,cod,dat,dbaixa) %>%
+  # Calculo els dies de solapament per codi (cod) 
+    dplyr::mutate(overlap = pmax(pmin(dtindex+lubridate::days(finestra.dies[2]), dbaixa) - pmax(dtindex+lubridate::days(finestra.dies[1]), dat) + 1,0),
+                  overlap=as.numeric(overlap)) %>%
+    filter(overlap>0) # Elimino els que no xafen la finestra (overlap==0) 
+    
+  # Capturo l'agregador cataleg i elimino repetits
+  prescripcions_agr<-prescripcions_agr %>% 
+    dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%       # Capturo agregador del cataleg
+    dplyr::distinct(idp,dtindex,cod,agr,.keep_all = TRUE)                          # Eliminar duplicats PER idp-dtindex-cod-agr 
+  
+ # Agregació de temps acumulats (dies) o primera data dins finestra 
+  if (not(agregar_data)) {
+  # suma dies acumulats
+  prescripcions_agr<-prescripcions_agr %>%
+    dplyr::group_by(idp,dtindex,agr) %>% 
+    dplyr::summarise(FX=sum(overlap,na.rm=T)) %>% 
+    dplyr::ungroup() }
+      
+  #  Si s'ha d'agregar la primera data de prescripció dins finestra de temps 
+  if (agregar_data) {
+    
+    # Selecciono primera data dins de l'interval
+    prescripcions_agr <- prescripcions_agr %>% 
+      
+      dplyr::mutate (
+        int1=dtindex+lubridate::days(finestra.dies[1]),    
+        data0=ifelse(dat>=int1,dat,int1),               # Si solapament inclou tota la finestra afago limit inferior de la finestra
+        data0=lubridate::as_date(data0)) %>% 
+      as_tibble() %>%
+      dplyr::select(idp,dtindex,agr,dat=data0) %>% 
+      dplyr::group_by(idp,dtindex,agr) %>% 
+      dplyr::slice(which.min(dat)) %>%                  #
+      dplyr::ungroup() %>% 
+      dplyr::rename(FX=dat)}
+  
+  
+  # Aplanamenta
+  prescripcions_agr<-prescripcions_agr %>% tidyr::spread(agr,FX,sep=".")
+      
+  # Canvi de noms     
+  names(prescripcions_agr) <- sub("agr.", prefix, names(prescripcions_agr))   # Afegir prefix en noms de variables 
+  
+  prescripcions_agr
+
+}
+
+#  agregar_facturacio -------------------
+#  Retorna tibble (data.table) amb la suma d'envasos o data primera dispensació dins d'una finestra de temps per idp-dataindex      
+#  Arguments: historic de facturacions (PRESCRIPCIONS) , data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0) 
+#  Requereix (idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
+agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F){
+  
+  # dt=FX.FACTURATS_PRESCRITS_1000000
+  # finestra.dies = c(-30,0)
+  # camp_agregador="GRUP"
+  # dt.agregadors = conductor_variables
+  # bd.dindex = "20151231"
+  # prefix="FD."
+  # agregar_data=T
+  
+  # Recode els numeros infinits
+  finestra.dies=ifelse(finestra.dies==+Inf,99999,finestra.dies)
+  finestra.dies=ifelse(finestra.dies==-Inf,-99999,finestra.dies)
+
+  #### Afegir data index en l'historic 
+    
+  dt<-afegir_dataindex(dt,bd.dindex)
+
+  # Si no existeix agr el creo de crear
+  if (not("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
+  
+  ## Filtrar CATALEG 
+  dt.agregadors<-dt.agregadors %>% select_("cod","agr"=camp_agregador)
+  dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
+  
+  #### Filtrar per finestra temporal 
+  ##  
+  pepito<-dt %>% dplyr::mutate (
+    data=lubridate::ymd(paste0(as.character(dat),"15")),    # Data arrodonida al dia 15
+    datafi=data+lubridate::days(env*30),                  # Genero data fi en funció dels envasos
+    dtindex=lubridate::ymd(dtindex))
+  
+  # Estimo el nombre d'envasos de solapament per codi i agrego per codi diferent 
+  pepito<-pepito %>% 
+    dplyr::mutate(interval2=dtindex+lubridate::days(finestra.dies[2]),
+                                   interval1=dtindex+lubridate::days(finestra.dies[1]), 
+                                   overlap = pmax(pmin(interval2, datafi) - pmax(interval1,data) + 1,0),
+                                   overlap=as.numeric(overlap),
+                                   env2=overlap/30) %>%
+    dplyr::select(-agr,-dat,-interval2,-interval1,env,-env,env=env2) %>%      # Netejo variables
+    filter(env>0.05)    # Selecciono files amb solapament d'envasos dins finestra (Elimino env>0.05)
+  
+  # Capturo Agregador de CATALEG
+  pepito<- pepito %>%  
+    dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%      # Capturo agregador del cataleg
+    dplyr::distinct(idp,dtindex,cod,agr,data,datafi,.keep_all = TRUE)             # Elimino duplicats per idp-dtindex-cod-agr
+  
+  # Agregació de nombre d'envasos per defecte             
+  if (not(agregar_data)) {
+    
+    dt_agregada <- pepito %>%                   # Agrego --> Suma de numero d'envasos per idp-dtindex-agr 
+      dplyr::select(c(idp,dtindex,agr,env)) %>% 
+      as_tibble() %>% 
+      dplyr::group_by(idp,dtindex,agr) %>% 
+      dplyr::summarise(FX=sum(env,na.rm=T)) %>% 
+      dplyr::ungroup()
+  }
+
+  #  Si s'ha d'agregar data primera Facturació
+  if (agregar_data){
+    dt_agregada <- pepito %>%                    # Agrego --> data mínima  
+      mutate(
+        int1=dtindex+lubridate::days(finestra.dies[1]),  # Si solapament inclou tota la finestra afago limit inferior de la finestra
+        data0=ifelse(data>=int1,data,int1),
+        data0=lubridate::as_date(data0)) %>% 
+        as_tibble() %>% 
+      dplyr::select(c(idp,dtindex,agr,data=data0)) %>%
+      dplyr::group_by(idp,dtindex,agr) %>% 
+      dplyr::slice(which.min(data)) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::rename(FX=data)
+    
+    }
+  
+  # Aplanamenta
+   dt_agregada<-dt_agregada %>% 
+        tidyr::spread(agr,FX,sep=".") %>% 
+        mutate_if(is.numeric, funs(ifelse(is.na(.), 0, .)))
+        # mutate_if(is.numeric, list(ifelse(is.na(.), 0, .)))
+      
+  names(dt_agregada) <- sub("agr.", prefix, names(dt_agregada))   # Afegir prefix a noms de variables 
+  
+  dt_agregada
+  
+}
+
+#  AGREGADOR DE VISITES      ###############
+### Envio la historic de visites i retorno numero de visites en la finestra de temps 
+
+agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0)){
+  
+  # dt=VISITES
+  # bd.dindex = bdades_index
+  # finestra.dies=c(-365,-45)
+  
+  ## Afegir en dataindex (+dtindex) en historic de Visites
+  dt<-afegir_dataindex(dt,bd.dindex) 
+  
+  ##### filtrar per intervals de dates 
+  # Convertir dates a numeric
+  dt<-dt %>% mutate(dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
+                    dtindex=dtindex %>% as.numeric()) %>% as_tibble()
+  
+  ##### filtrar per intervals de dates 
+  dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
+                             dat<= dtindex +finestra.dies[2]) 
+  
+  
+  # dt<-dt[data.table::between(
+  #   lubridate::ymd(dat),
+  #   lubridate::ymd(dtindex)+finestra.dies[1],
+  #   lubridate::ymd(dtindex)+finestra.dies[2])]  
+  
+  ##### Agregar (Suma de visites en interval independentment del tipus)
+  
+  paco<-dt %>% 
+    dplyr::group_by(idp,dtindex,cod) %>%                    # Agrupo per id 
+    dplyr::count() %>%           # Conto el numero visites per codi 
+    dplyr::ungroup()  
+  
+  # RESHAPE per idp 
+  visites <- paco[,c("idp","dtindex","cod","n")] %>% 
+    dplyr::select(idp,dtindex,visites=cod,n) %>% 
+    tidyr::spread(visites,n,sep = "_")
+  
+  paco <- paco %>% 
+    dplyr::select(idp,dtindex,visites=cod,n) %>% 
+    tidyr::spread(visites,n,sep = "_")
+  
+  # NA = 0
+  visites[is.na(paco)]<-0
+  
+  ###  Computo visites globals
+  paco<-paco %>% select(idp,dtindex)  # Separo id de visites 
+  
+  visites<-visites %>%        #  Sumo totes les visites
+    select(starts_with("visites")) %>% 
+    mutate(visites_TOT=rowSums(.) )
+  
+  paco<-paco %>% cbind(visites) %>% as_tibble()
+  
+  paco
+  
+}
+
+
+
+#  APLICA CRITERIS D'EXCLUSIÓ A dades  -----------------------
+criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1") {
+  
+  # dt=dades
+  # taulavariables="VARIABLES_R3b.xls"
+  # criteris="exclusio1"
+
+  ##  Llegeix criteris de variables 
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  
+  ##  0. Filtro taula variables només variables implicades en el filtre i el genero 
+  maco<-variables %>% 
+    dplyr::filter_(paste0(criteris,"!=0")) %>% 
+    dplyr::select_("camp",criteris) %>%
+  # Genero la llista de filtres 
+    tidyr::unite_("filtres", c("camp", criteris),sep="") 
+ 
+     # Concateno condicions amb un OR
+  maco<-str_c(maco$filtres,collapse=" | ")
+  
+  ## 1. Genera filtre en base a columna exclusio1   popes
+
+  popes<-str_c("!(",maco,")")
+
+  ##  2. Eliminar els espais en blanc de les variables factors del data.frame
+
+  dt<-dt %>% 
+    dplyr::mutate_if(is.factor,funs(str_trim(.)))
+  
+  ##  3. Aplicar filtre: popes a dt
+  
+  dt<-dt %>% 
+    dplyr::filter(eval(parse(text=popes)))
+  
+  
+}
+
+#  FLOW-CHART A partir de criteris d'exclusió en taulavariable  -----------------------------------
+
+criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
+                                     pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre=NA,grups=NA){
+  
+  # dt=dadesinicials
+  # taulavariables = conductor_variables
+  # criteris = "exclusio"
+  # etiquetes="exc_lab"
+  # grups="grup"
+  # pob_lab=c("Pob inicial","Pob final")
+  # ordre=NA
+  
+  ### Si hi ha grups capturar el nombre categories
+  # Per defecte UN sol grup
+  ngrups=1
+  # ngrups>1
+  if (!is.na(grups)) {
+    ngrups=length(table(dt[grups]))
+    Etiqueta_pob_inicial=pob_lab[1]
+    Npob_inicial=dt %>% count() %>% as.numeric()
+    }
+  
+  ##  Llegeixo criteris de variables i selecciono variables amb filtres 
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
+ 
+  # variables<-variables %>% select_if(names(.)%in%c("camp",criteris,etiquetes,ordre)) select_if no funciona
+  variables<-variables %>% select(c("camp",criteris,etiquetes,ordre))
+  
+  ##  Elimino els espais en blanc de les variables factor
+  dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) %>% as.data.table()
+
+  ## Selecciono dades només de les variables implicades en el filtres 
+  llista_camps<-variables["camp"] 
+  
+    ## Dades amb variables implicades en els filtres
+  if (is.na(grups)) {dt<-dt %>% mutate(grup="constant")}  
+  if (is.na(grups)) {grups="grup"}
+  
+  datatemp<-dt %>% select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
+  
+  # Genero filtres
+  maco_noms<-variables["camp"]
+
+  # Genero la llista de filtres 
+  maco_criteris<-variables %>% 
+    dplyr::select_("camp",criteris) %>%
+    tidyr::unite_("filtres", c("camp", criteris),sep="") 
+
+  maco_criteris<-maco_noms %>% cbind(maco_criteris) %>% mutate(tipus_cri="pur")
+  
+  maco_miss<-variables %>% 
+    dplyr::select_("camp") %>%
+    dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% select(filtres)
+
+  maco_miss<-maco_noms %>% cbind(maco_miss) %>% mutate(tipus_cri="missing")
+  
+  maco_criteris<-maco_criteris %>% rbind(maco_miss) %>% arrange_("camp")
+
+  ## Generar taula amb dades per cada criteri d'exclusió  
+  num_criteris<-data.frame()
+  ## Generar dades dels critersi criteris 
+  for (i in 1: length(maco_criteris$filtres)){
+    
+    dades_criteris<-datatemp %>% 
+      dplyr::filter_(as.character(maco_criteris[i,]$filtres)) %>% 
+      group_by(grup) %>% summarise (n=n(),any(n)) %>% mutate(criteri=i) %>% 
+      mutate(camp=maco_criteris[i,]$camp,
+             filtre_tipus=maco_criteris[i,]$tipus_cri,
+             filtre_forma=maco_criteris[i,]$filtres
+             ) %>% 
+      ungroup
+    
+    
+    num_criteris<-num_criteris %>% rbind(dades_criteris)
+    
+    }
+  
+  # Expandir per tenir una fila per criteri amb valor 
+  taula_criteris<-num_criteris %>% 
+    expand(grup,camp,filtre_tipus) %>% 
+    left_join(num_criteris,by=c("grup","camp","filtre_tipus"))
+  
+    # Netejar aquelles files que no tinguin cap 0 en cap dels grups 
+  temp<-taula_criteris %>% mutate(n=ifelse(is.na(n),0,n)) %>% 
+    group_by(camp,filtre_tipus) %>% 
+    summarise(suma_n=sum(n))
+  
+  taula_criteris<-taula_criteris %>% 
+    left_join(temp,by=c("camp","filtre_tipus")) %>% 
+    filter(suma_n!=0) %>% 
+    select(-suma_n) %>% 
+    mutate (n=ifelse(is.na(n),0,n))
+  
+
+  # Afegir etiquetes a num_criteris
+  # Etiquetes dels criteris d'inclusio 
+  taula_etiquetes<- variables %>% dplyr::select_("camp",etiquetes) %>% rename_("etiqueta_exclusio"=etiquetes)
+    
+  taula_criteris<-taula_criteris %>% left_join(taula_etiquetes,by="camp")
+
+  taula_criteris<-taula_criteris %>% mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
+  
+  taula_criteris<-taula_criteris %>% arrange(camp,filtre_tipus,grup)
+
+  ## I ara passar informació generada a vectors per passar-ho al diagrameR
+  
+  # N d'esclusions 
+  n_exc<-taula_criteris[c("n","grup")] %>% split(.$grup)
+
+  # Etiquetes d'exclusions
+  lab_exc<-taula_criteris[c("etiqueta_exclusio","grup")] %>% split(.$grup)
+  
+  lab_exc<-lab_exc[[1]]$etiqueta_exclusio %>% as_vector
+  
+  # Calcular N població final per cada grup (3x1)
+  
+  # Generar FILTRE
+  filtre_total<-stringr::str_c(maco_criteris$filtres,collapse=" | ")
+  filtre_total<-stringr::str_c("!(",filtre_total,")")
+  
+  # Eliminar els espais en blanc de les variables factors del data.frame
+  datatemp<-datatemp %>% dplyr::mutate_if(is.factor,funs(str_trim(.)))
+  
+  # Aplicar FILTRE 
+  datatemp<-datatemp %>% dplyr::filter(eval(parse(text=filtre_total)))
+  
+  # Generar N per cada grup Inicial i Final x grup 
+  
+  pob.i<-dt %>% group_by(grup) %>% summarise (n=n()) %>% select(n) %>% as.vector
+  pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% select(n) %>% as.vector
+
+  n_pob1<-c(pob.i$n[1],pob.f$n[1])
+  n_pob2<-c(pob.i$n[2],pob.f$n[2])
+  n_pob3<-c(pob.i$n[3],pob.f$n[3])
+  
+  #  Generar Etiquetes: Pob inicial i final x grup 
+  
+  # Etiquetes grups
+  pob_lab_grup1<-c(paste0("Group: ",taula_criteris[["grup"]][1]),paste0("Group: ",taula_criteris[["grup"]][1]))
+  pob_lab_grup2<-c(paste0("Group: ",taula_criteris[["grup"]][2]),paste0("Group: ",taula_criteris[["grup"]][2]))
+  pob_lab_grup3<-c(paste0("Group: ",taula_criteris[["grup"]][3]),paste0("Group: ",taula_criteris[["grup"]][3]))
+  
+  # Si només hi ha un grup pob inicial es parametres inicials
+  if (ngrups==1) {pob_lab_grup1=pob_lab}
+  if (ngrups==1) {Npob_inicial=n_pob1}
+  
+  
+  # Crido diagrama 
+  diagrama<-diagramaFlowchart(grups=ngrups,
+                         pob=Npob_inicial,
+                         pob_lab=Etiqueta_pob_inicial,
+                         exc1=n_exc[[1]]$n %>% as_vector,
+                         exc2=n_exc[[2]]$n %>% as_vector,
+                         exc3=n_exc[[3]]$n %>% as_vector,
+                         
+                         exc_lab1=lab_exc,
+                         exc_lab2=lab_exc,
+                         exc_lab3=lab_exc,
+                         
+                         pob1=n_pob1,
+                         pob2=n_pob2,
+                         pob3=n_pob3,
+                         
+                         pob_lab1=pob_lab_grup1,
+                         pob_lab2=pob_lab_grup2,
+                         pob_lab3=pob_lab_grup3
+                         )
+  
+
+  diagrama
+
+
+}
+
+
+
+#  CALCULA LA PROPORCIÓ -- RETORNA N I % fila ----------------
+
+calcular_proporcio<-function(dt=dades,factor="canvi612M.glicadaCAT2"){
+  
+  # dt=dades
+  # factor="canvi612M.glicadaCAT2"
+  # cat="Yes"
+  
+  moco<-dt %>% 
+    tidyr::drop_na(factor) %>% 
+    dplyr::group_by_(factor) %>% 
+    dplyr::summarise_(n="n()") %>% 
+    dplyr::mutate_(freq="n/sum(n)*100") 
+  
+  moco
+  
+}
+
+
+#  CALCULA PROPORCIO PER GRUPS I RETORNA P VALOR    --------------     
+
+proporcions_grups<-function(dt=dades,factor="canvi612M.glicadaCAT2",estrat="SEXE"){
+  
+  # dt=dades
+  # factor="canvi612M.glicadaCAT2"
+  # estrat="CODGLP1"
+  
+  ##  extrec p-valor
+  pepito=paste0("chisq.test(dt$",factor,",dt$",estrat,")$p.value",sep="")
+  pvalor<-eval(parse(text=pepito))
+  
+  resultat<-
+    dt %>% 
+    tidyr::drop_na(factor) %>% 
+    dplyr::group_by_(estrat) %>% 
+    dplyr::do(calcular_proporcio(dt=.,factor=factor)) %>% 
+    dplyr::mutate(p=pvalor)
+  
+  resultat
+  
+}
+
+
+#  RETORNA UNA LLISTA DE TAULES DE PROPORCIONS PER GRUPS ESTRATIFICAT PER estratificat ----------
+
+proporcio_grups_estratificat<-function(dt=dades,factor.Y="canvi612M.glicadaCAT2",grup=c("SEXE","CODGLP1","anys_DMcat4"),estratificat="HBA1C_cat4") {
+  
+  # dt=dades
+  # factor.Y="canvi612M.glicadaCAT2"
+  # grup=c("SEXE","anys_DMcat4")
+  # estratificat="HBA1C_cat4"
+  
+  pepe<-list()
+  
+  for (i in 1:length(grup))  {
+    pepe[[i]]<-
+      dt %>% 
+      tidyr::drop_na(estratificat) %>% 
+      dplyr::group_by_(estratificat) %>%
+      dplyr::do(proporcions_grups(dt=.,factor=factor.Y,estrat=grup[i]))
+    
+  }
+  
+  pepe
+  
+  
+}
+
+
+
+#  REDUCCIÓ AJUSTADA DIFERENTS METODES D'AJUST-----------------
+
+##    BASAL , POST I RETORNA LA DIFERENCIA AJUSTA SEGONS EL BASAL I ERROR ESTANDARD
+
+reduccio_ajustada<-function(dt=dades,v.basal,v.final,mean.basal=NA) {
+  
+  library(mgcv)
+  
+  # #  parametres 
+  
+  # dt=dades
+  # v.basal="HBpreADD"
+  # v.final="HBpostADD"
+  # mean.basal=9.02
+  
+  ##  Si no poso la mitjana basal poso la mitjana de la base de dades
+  if (is.na(mean.basal)) mean.basal=mean(dt[,v.basal],na.rm=T)
+  
+  #   Calculo la variable canvi  
+  dt<-dt %>% 
+    dplyr::mutate(canvi=dt[,v.basal]-dt[,v.final]) 
+  # Genero quintils que no els faré servir de moment 
+  dt<-dt %>% 
+    dplyr::mutate(basal_cat5=cut2(dt[,v.basal], g=5))
+  
+  ## Elimino missings de taula i selecciono variables
+  dt<-dt %>% 
+    tidyr::drop_na(canvi) %>% 
+    dplyr::select_(v.basal,v.final,"canvi","basal_cat5")
+
+  ## canvio noms que tampoc caldria
+  names(dt)<-c("pre","post","dif","basal_cat")
+  
+  ## model cru (descriptiu bàsic,+ mean, se )
+  taula<-dt %>% summarise(
+    n=n(),
+    mean.basal=mean(pre),
+    mean.canvi=mean(dif), 
+    se=sd(dif)/sqrt(n())
+  )
+  
+  ### arguments de funcions dels models amb les dades, junt amb la mean.basal
+  pre<-dt$pre
+  dif<-dt$dif
+  
+  # funcions dels models 
+  model.lineal.w<-function(y=y,x=x)glm(y~x,weights =x,family = gaussian)
+  model.lineal<-function(y=y,x=x) glm(y~x,family = gaussian) 
+  model.nolineal<-function(y=y,x=x) glm(y~x+I(x^2)+I(x^3),family = gaussian) 
+  model.gam1<-function(y=y,x=x) gam(y~s(x),family = gaussian)
+  model.gam2<-function(y=y,x=x) gam(y~s(x,bs="cc",k=12),family = gaussian)
+  
+  # Genero els models que els poso en una llista
+  llista.models<-list(
+    lineal.w=model.lineal.w(x=pre,y=dif),
+    # lineal=model.lineal(x=pre,y=dif),
+    nolineal=model.nolineal(x=pre,y=dif),
+    gam1=model.gam1(x=pre,y=dif)
+    # , gam2=model.gam2(x=pre,y=dif)
+    )
+
+  predict(llista.models[[1]],data.frame(x=mean.basal))
+
+  ## Genero les prediccions () en el punt basal mitg  i guardo el la SE
+  maquina<-llista.models %>% 
+    purrr::map_df(predict,data.frame(x=mean.basal),se.fit=T) %>% 
+    as.data.frame()
+  
+  ## Calculo Rquadrat per cada model
+  Rquadrat<-llista.models %>% 
+    purrr::map_dbl(function(modelaco) (1-(modelaco$deviance/modelaco$null.deviance))) %>% 
+    as.data.frame()
+
+  ## Combino informació Rquadrat + prediccions de cada model
+  taula.models<-cbind(Rquadrat,maquina)
+  
+  ## poso els noms dels models com una columna
+  taula.models$model<-row.names(taula.models)
+  
+  ## enganxo la taula dels valors mitjans  i la N
+  taula<-cbind(taula.models,taula,v.basal)
+  
+  ## Hauria de canviar el nom de les variables una mica i eliminar coses que no serveixen i tal pascual
+
+  names(taula)[1] <- "R.Square"
+  
+  # Drop variables with -
+  # taula<-select(taula, -("residual.scale"))
+
+  taula
+
+}
+
+#  Predicció ajustada amb dades imputades   -----------------
+
+#  Envio un dades generades amb MICE , X Y i retorna les prediccions amb ES     ###
+
+
+glance.prediction = function(x) {
+  data.frame(term = 'prediction',
+             estimate = x[['fit']],
+             std.error = x[['se.fit']],
+             df.residual = x[['df']]) }
+
+tidy.prediction = function(x, effects = "fixed", exponentiate = FALSE)
+  {glance.prediction(x)}
+
+retorn_prediccio_MI<-function(data_imp=tempData,x="HBpreADD",y="canvi_ADD",dades_origen=dades) {
+  
+  # data_imp=tempData
+  # x="1"
+  # y="canvi_ADD"
+  # dades_origen=dades
+  
+  imp<-tempData
+  nimp<-imp$m
+  
+  if (x!="1") mean.basal=mean(dades_origen[,x],na.rm=T)
+  if (x=="1") mean.basal=0
+
+  df.pred<-as.data.frame(mean.basal) %>% setNames(x)
+  
+  texto=paste0(y,"~",x)
+  
+  mods.imp = lapply(1:nimp, function(.nimp){
+    # m = lm(canvi_ADD~HBpreADD, data = complete(imp, .nimp))
+    m=with(complete(imp,.nimp),lm(eval(parse(text=texto))))
+    
+    mm = predict(m, newdata=df.pred, se.fit = TRUE)
+    structure(
+      mm,
+      class = 'prediction')
+  })
+  
+
+  
+  pp<-summary(mice::pool(as.mira(mods.imp)))
+  
+  pp
+  
+}
+
+retorn_prediccio_MI_STR<-function(data_imp=tempData,x="HBpreADD",y="canvi_ADD",dades_origen=dades,valor_subset="<8",var_subset="HBpreADD") {
+  
+  # data_imp=tempData
+  # x="1"
+  # y="canvi_ADD"
+  # dades_origen=dades
+  # valor_subset="<8"
+  # var_subset="HBpreADD"
+  
+  subset<-paste0(var_subset,valor_subset)
+  
+  imp<-tempData
+  nimp<-imp$m
+  
+  if (x!="1") mean.basal=mean(dades_origen[,x],na.rm=T)
+  if (x=="1") mean.basal=0
+  
+  df.pred<-as.data.frame(mean.basal) %>% setNames(x)
+  
+  texto=paste0(y,"~",x) # texte model
+  texte_subset<-paste0("subset(complete(imp,.nimp),",subset,")")
+  
+  mods.imp = lapply(1:nimp, function(.nimp){
+    # m = lm(canvi_ADD~HBpreADD, data = complete(imp, .nimp))
+    # m=with(complete(imp,.nimp),lm(eval(parse(text=texto))))
+    
+    m=with(eval(parse(text=texte_subset)),lm(eval(parse(text=texto))))
+    
+    mm = predict(m, newdata=df.pred, se.fit = TRUE)
+    structure(
+      mm,
+      class = 'prediction')
+  })
+  
+  
+  
+  pp<-summary(mice::pool(as.mira(mods.imp)))
+  
+  pp
+  
+}
+
+retorn_prediccio_MI_STR2<-function(data_imp=tempData,x="HBpreADD",y="canvi_ADD",dades_origen=dades,valor_subset1=">=8",valor_subset2="<=10",var_subset="HBpreADD") {
+  
+  # data_imp=tempData
+  # x="1"
+  # y="canvi_ADD"
+  # dades_origen=dades
+  # valor_subset="<8"
+  # var_subset="HBpreADD"
+  # valor_subset1=">=8"
+  # valor_subset2="<=10"
+  
+  subset<-paste0(var_subset,valor_subset1," & ",var_subset,valor_subset2)
+  
+  imp<-tempData
+  nimp<-imp$m
+  
+  if (x!="1") mean.basal=mean(dades_origen[,x],na.rm=T)
+  if (x=="1") mean.basal=0
+  
+  df.pred<-as.data.frame(mean.basal) %>% setNames(x)
+  
+  texto=paste0(y,"~",x) # texte model
+  texte_subset<-paste0("subset(complete(imp,.nimp),",subset,")")
+  
+  mods.imp = lapply(1:nimp, function(.nimp){
+    # m = lm(canvi_ADD~HBpreADD, data = complete(imp, .nimp))
+    # m=with(complete(imp,.nimp),lm(eval(parse(text=texto))))
+    
+    m=with(eval(parse(text=texte_subset)),lm(eval(parse(text=texto))))
+    
+    mm = predict(m, newdata=df.pred, se.fit = TRUE)
+    structure(
+      mm,
+      class = 'prediction')
+  })
+  
+  
+  
+  pp<-summary(mice::pool(as.mira(mods.imp)))
+  
+  pp
+  
+}
+
+
+
+#
+
+
+
+#  PLOT dispersió segons PRE-POST , FA DISPERSIÓ DE PRE VS CANVI I SOBREPOSA AJUST------
+
+plot.dispersio.reduccio <-function(dt=dades,v.basal="HBpreADD",v.final="HBpostADD") {
+  
+  # library(mgcv)
+  
+  # #  parametres 
+  
+  # dt=dades
+  # v.basal="HBpreADD"
+  # v.final="HBpostADD"
+  
+  dt <-dt %>% dplyr::mutate(canvi=dt[,v.basal]-dt[,v.final]) 
+  # Genero quintils
+  dt<-dt %>% dplyr::mutate(basal_cat5=cut2(dt[,v.basal], g=5))
+  
+  ## Elimino missings de taula i selecciono variables
+  
+  dt<-dt %>% 
+    tidyr::drop_na(canvi) %>% 
+    dplyr::select_(v.basal,v.final,"canvi","basal_cat5")
+  
+  ## poso noms
+  names(dt)<-c("pre","post","dif","basal_cat")
+  
+  lineal<-glm(dif~pre,weights = pre,family = gaussian, data=dt) %>% predict()
+  lineal2<-glm(dif~pre,family = gaussian, data=dt) %>% predict()
+  gam1<-mgcv::gam(dif~s(pre),family = gaussian, data=dt) %>% predict()
+  gam2<-mgcv::gam(dif~s(pre,bs="cc",k=12),family = gaussian, data=dt) %>% predict()
+  model.nolineal<-glm(dif~pre+I(pre^2)+I(pre^3),family = gaussian,data=dt) %>% predict()
+  
+  
+  figuraZ<-dt %>% 
+    ggplot2::ggplot(aes(x=pre, y=dif)) + 
+    geom_point() + 
+    ylab("Change at 6-12 months:HbA1c (%)") +
+    xlab("HbA1c (%) Baseline") +
+    geom_point(aes(y=lineal),color="red")+
+    geom_point(aes(y=gam1),color="blue") +
+    geom_point(aes(y=model.nolineal),color="green")+
+    ggtitle(paste0(v.basal," Versus ",v.final)) # for the main title
+  
+  figuraZ
+  
+  
+}
+
+#  Forest.plot --------------------
+
+#  A partir de taula amb OR's genera Forest Plot 
+
+forest.plot<-function(dadesmodel=ramo,label=dadesmodel$Categoria,mean=dadesmodel$OR,lower=dadesmodel$Linf,upper=dadesmodel$Lsup) {
+  
+  # dadesmodel=taula_editada
+  # label=taula_editada$Categoria
+  # mean=taula_editada$OR
+  # lower=taula_editada$Linf
+  # upper=taula_editada$Lsup
+
+  dadesmodel<-dadesmodel %>% mutate(id=seq(1:length(label)))
+
+  fp <- ggplot(data=dadesmodel,aes(x=dadesmodel$id, y=dadesmodel$OR, ymin=dadesmodel$Linf, ymax=dadesmodel$Lsup)) +
+    geom_pointrange() + 
+    geom_hline(yintercept=1, lty=2) +  # add a dotted line at x=1 after flip
+    coord_flip() +  # flip coordinates (puts labels on y axis)
+    xlab("Label") + ylab("OR (95% CI)") +
+    scale_x_continuous(breaks=dadesmodel %>% pull(id) ,labels=dadesmodel %>% pull(Categoria))
+  
+
+  fp
+}
+
+#  DATA RANDOM ENTRE DUES DATES (dataini i datafi) ---------------
+
+data.random <- function(dataini=20120101, datafi=20121231) {
+  
+  # dataini=20120101
+  # datafi=20161231
+  
+  dataini <- as.POSIXct(lubridate::ymd(dataini))
+  datafi <- as.POSIXct(lubridate::ymd(datafi))
+  temps <- as.numeric(difftime(datafi,dataini,unit="sec"))
+  
+  # Genera Data sumant temps random a dataini
+  rt <- dataini + runif(1, 0, temps)
+}
+
+#  RETORNA UNA DATA A STRING  ------------------
+
+data.to.string<-function(data) {
+  
+  data.string=paste0(year(data),
+                     str_pad(lubridate::month(data),2,"left","0"),
+                     str_pad(lubridate::day(data),2,"left","0"))
+  
+}
+
+#  Data R Lubridate a partir de data UTC  -----------
+# Dades i x=Variable o vector de variables
+
+dataUTC_to_Rdata<-function(x,dt) {
+  
+  # dt<-dades
+  # x=c("data_inici_HD","ANT1_ARTER_PERI","ANT2_ARTE_PERI","ANT1_CI")
+
+  # Seleccionar nom del camp si es tipo caracter 
+  vector_caracter<-dt %>% dplyr::select_if(~!any(class(.)!="character",na.rm=F)) %>% names()
+  
+  # Vectors de variables UTC (data POSIXct)
+  x_UTC<-x [!x %in% vector_caracter]
+           
+  # Vector de variables caracter ("37712")
+  x_text<-x [x %in% vector_caracter]
+             
+  
+  # Funcio que converteix UTC data a date ymd
+  data_convert_UTC<-function(x){
+   x<-format(as.POSIXct(x, origin='1970-01-01'), format='%Y/%m/%d')
+   x<-lubridate::ymd(x)}
+  
+  # Funcio que converteix data caracter ("37712) a date ymd () "2003-04-01"
+  data_convert_text<-function(x){
+    x<-as.Date(as.numeric(x), origin = "1899-12-30") %>% 
+      lubridate::ymd()}
+    
+  # Aplicar conversions als dos tipos de dates
+  dt<-dt %>% purrr::modify_at(x_UTC,~data_convert_UTC(.x))   # UTC ->date
+  
+  dt<-dt %>% purrr::modify_at(x_text,~data_convert_text(.x))   # text->date
+  
+  dt
+  
+}
+
+# Funcio que converteix data caracter ("37712") a date ymd () "2003-04-01"
+data_convert_text<-function(x){
+  x<-as.Date(as.numeric(x), origin = "1899-12-30") %>% 
+    lubridate::ymd()}
+
+# Funcio que converteix de numeric (15784) a Date "2013-03-20"
+data_convert_numeric<-function(x){ x<-as.Date(x, origin = "1970-01-01")}
+
+# Funcio que converteix UTC data a date ymd
+data_convert_UTC<-function(x){
+  x<-format(as.POSIXct(x, origin='1970-01-01'), format='%Y/%m/%d')
+  x<-lubridate::ymd(x)}
+
+
+#  CONVERTEIX FORMAT TEXT A DATA                     -------------
+#
+#          Format YYYYMMDD (Format text -> data)          
+# Input : dades, conductorvariables, campdata (com a indicadora (0/1))
+
+convertir_dates<-function(d=dadestotal,taulavariables="variables_R.xls",campdata="dates")
+  
+{
+  ####  Llegir etiquetes i variables a analitzar  ##
+  variables <- readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<- 0
+  #
+  #
+  # etiquetar variables         
+  seleccio<-variables
+  camp<- as.vector(seleccio$camp) #
+  
+  for (i in 1:length(camp)){if (seleccio$dates[i]==1) { 
+    
+    pepito<-paste0("as.Date(d[[camp[",i,"]]], '%Y%d%m')")
+    
+    d[[camp[i]]]<-eval(parse(text=pepito))
+    
+  } }
+  
+  d
+  
+}
+
+
+#  Passa data de SPSS a Rdata  ----------------------------
+
+# 13481683200 --> 2010-01-01
+
+dataSPSS_to_Rdata <- function(x) {
+  y<-as.Date(x/86400, origin = "1582-10-14") %>% 
+    lubridate::ymd() }
+
+# 
+#  Random dates i marcar potencials CONTROLS-----------
+#
+# Genero N dates random entre 2010-2016 el mateix nombre que 
+
+dt_index_data_random<-function(dt=PACIENTS) {
+  
+  # dt=PACIENTS
+  # Necessito camp dtsortida (ymd)
+  
+  ####        Genero una data random entre 01/01/2010 i 31/12/2016
+  
+  set.seed(123)
+  data_index_data<-dt %>% 
+    nrow() %>% runif(as.Date("10/01/01", "%y/%m/%d"), as.Date("16/12/31", "%y/%m/%d")) %>% 
+    data.table() %>% 
+    setNames(.,c("dtindex.random")) %>% 
+    mutate (
+      dtindex.random=as.Date(dtindex.random, origin = "1970-01-01")
+    )
+  
+  # Fusiono amb idp i selecciono POTENCIALS CONTROLS dins de periode de seguiment
+
+  BD_PAC_DINDEX<-dt %>% 
+    select(idp,dtsortida) %>%             
+    cbind(data_index_data) %>%                                # Fusiono dates random
+    filter(dtindex.random<=lubridate::ymd(dtsortida)) %>%     # Filtro només aquells que dins de la data de seguiment
+    select (idp,dtindex.random) %>% 
+    as_tibble()
+
+}
+
+#
+
+#  GENERA UNA DATA INDEX SEGONS UNA DETERMINACIÓ ---------------------- 
+## RETORNA DADES AMB idp + dtindex.semirandom
+
+dt_index_data_semirandom<-function(dt=PACIENTS,dt.variables=VARIABLES,codi="EK201"){
+  
+  # dt=PACIENTS
+  # dt.variables=VARIABLES
+  # codi="EK201"
+  
+  # b) SEMI.RANDOM (amb un màxim de data a data sortida)
+  
+  # Una data entre tots Colesterol total (prèvies a data sortida) 
+  # Si no hi ha cap Colesterol alguna V clínica període (Random) 
+  set.seed(123)
+  ### Per cada pacient selecciono una dat random de entre tots els COLESTEROLS  (2010-2016)
+  UN.COLESTEROL<-dt.variables %>%               
+    filter(cod==codi) %>%                       # selecciono colesterols (Validar que es EK201)
+    dplyr::left_join(dt,by="idp") %>%           # Junto pacients 
+    select(idp,cod,dat,dtsortida) %>%           # Selecciono camps necessaris
+    filter(!is.na(dtsortida)) %>%               # Filtro només pacients (amb dtsortida)
+    filter (dat>=20100101 & dat<=dtsortida) %>%  # filtro Dates dins periode de seguiment 
+    group_by(idp) %>%                           # Agafo un colesterol per cada idp
+    sample_n(size = 1) %>%                      # Random
+    ungroup %>% 
+    select(idp, dat) %>% 
+    rename(dat_col=dat) 
+  
+  ### Per cada pacient selecciono una dat random entre totes les VARIABLES 
+  UNA.VARIABLE<-dt.variables %>%                # totes les variables  
+    dplyr::left_join(dt,by="idp") %>%           # Junto pacients 
+    select(idp,dat,dtsortida) %>%               # Selecciono camps necessaris
+    filter(!is.na(dtsortida)) %>%               # Filtro només pacients amb dtsortida 
+    filter (dat>=20100101 & dat<=dtsortida) %>% # Dates possibles dins el seguiment
+    group_by(idp) %>%                           # Agafo unA fila per cada idp
+    sample_n(size = 1) %>%                      # RAndom
+    ungroup() %>% 
+    select(idp, dat) %>% 
+    rename(dat_var=dat)
+  
+  ### Fusió d'ambdos fitxers i selecciono una d'elles preferentment colesterol
+  
+  BDADES_DT_INDEX<-UNA.VARIABLE %>% 
+    left_join(UN.COLESTEROL,by="idp") %>% 
+    mutate(dtindex.semirandom=ifelse(is.na(dat_col),dat_var,dat_col)) %>% 
+    select(idp,dtindex.semirandom)
+  
+}
+
+
+#  MATCHING CAS-CONTROL SEGONS MÉTODE DENSITY-INCIDENCE ------------------
+
+##  Retorna Subset matxejat per grup (event) en data index (dtindex.random, control) DE dt_pacients_dindex
+##  Llista de variables variables.ps
+
+matching_case_control<-function(dt=PACIENTS,variables.ps=llistaPS,dt_pacients_dindex=BD_PAC_DINDEX) {
+  
+  # dt=PACIENTS
+  # variables.ps=c("edat","dtindex","sexe") # covaribles
+  # dt_pacients_dindex=BD_PAC_DINDEX
+
+  # Es neceseciten camps com <dtsortida idp event> + llista de variables a matxejar
+  # <idp, dtindex.random, control> en BD_PAC_DINDEX 
+  
+  # 2 Fusionar events i controls en una sola taula
+  
+  dt <-dt %>% 
+    left_join(dt_pacients_dindex,by="idp")              # dt + dtindex.random (data random generada + de control
+  
+  # Selecciono events i mutar dataindex (event=1) en data d'event (dtsortida) 
+  
+  dtevents<-dt %>% filter(event==1) %>% mutate(dtindex=lubridate::ymd(dtsortida), event=1)         ## Els events data de sortida
+  
+  # Seleccionar controls i mutar dataindex en data index random 
+  
+  dtcontrols<-dt %>% filter(control==1) %>% mutate(dtindex=dtindex.random, event=0)     ## Els controls data random
+  
+  # Fusionar events + controls 
+  dt.total<-dtevents %>% rbind(dtcontrols)  
+  
+  
+  # 3 Agregar en data index (Edat)
+  
+  
+  # Agrego en dtindex 
+  
+  dt.total<-dt.total %>% 
+    mutate (edat=as.numeric((dtindex-lubridate::ymd(dnaix))/365.25))               # Calculo edat en dataindex
+  
+  
+  # 4 Fer matching 
+  
+  # preparar dades per matching (idp + Llista matching)
+  dadesmatching<-dt.total %>% select(idp,edat,dtindex,event,sexe)
+  
+  # Genero llista de covaraibles 
+  formulaPS<-as.formula(paste("event", paste(variables.ps, collapse=" + "), sep=" ~ "))
+  
+  dt.matched<-formulaPS %>% 
+    matchit(method="nearest",data=dadesmatching,ratio=4,caliper=0.01,distance = "logit") %>%    # FAig el matching 4 a 1
+    weights() %>%                                                            # Guardo els pesos 
+    data.table() %>% 
+    'colnames<-'(c("PS")) %>% 
+    bind_cols(dt.total) %>%                                                 # Ho junto al dt.total 
+    filter(PS==1) %>% 
+    as_tibble()
+  
+  
+}
+
+#  FLOW CHART FINAL (diagramaFlowchart)  ---------------------
+
+#----------------------------------------------------------------------------------------------#
+#                       FLOW-CHART FINAL
+#----------------------------------------------------------------------------------------------#
+
+# Diagramer 
+
+diagramaFlowchart<-function(
+  
+  grups=1,
+  pob=c(1700),
+  pob_lab=c("Poblaci? Alt Pened?s"),
+  
+  pob1=c(1000,500),
+  pob2=c(400,200),
+  pob3=c(300,100),
+  
+  pob_lab1=c("A INICIAL","A FINAL"),
+  pob_lab2=c("B Inicial","B Final"),
+  pob_lab3=c("C Inicial","C Final"),
+  
+  exc1=c(50,300,150),
+  exc2=c(100,50,50),
+  exc3=c(100,50,50),
+  
+  exc_lab1=c('Edat>90 anys','M.Cardio','M.Pulmonar'),
+  exc_lab2=c('Edat>90 anys','M.Cardio','M.Pulmonar'),
+  exc_lab3=c('Edat>90 anys','M.Cardio','M.Pulmonar'),
+  
+  colors=c('white','grey'),
+  forma=c('ellipse','box'))
+
+{
+  
+  if  (grups<1)
+  {print("Error, posa els GRUPS, si us plau! al Flowchart!")  }
+  else if  (grups==1)
+  {diagramaFlowchart1G(
+    pob1=pob1,
+    pob_lab1=pob_lab1,
+    exc1=exc1,
+    exc_lab1=exc_lab1,
+    colors=colors,
+    forma=forma)  }
+  else if (grups==2)
+  {diagramaFlowchart2G(
+    pob=pob,
+    pob_lab=pob_lab,
+    pob1=pob1,
+    pob_lab1=pob_lab1,
+    exc1=exc1,
+    exc_lab1=exc_lab1,
+    pob2=pob2,
+    pob_lab2=pob_lab2,
+    exc2=exc2,
+    exc_lab2=exc_lab2,
+    colors=colors,
+    forma=forma ) }
+  else if (grups==3)
+  {diagramaFlowchart3G(
+    pob=pob,
+    pob_lab=pob_lab,
+    pob1=pob1,
+    pob_lab1=pob_lab1,
+    exc1=exc1,
+    exc_lab1=exc_lab1,
+    pob2=pob2,
+    pob_lab2=pob_lab2,
+    exc2=exc2,
+    exc_lab2=exc_lab2,
+    pob3=pob3,
+    pob_lab3=pob_lab3,
+    exc3=exc3,
+    exc_lab3=exc_lab3,
+    colors=colors,
+    forma=forma) }
+  else if (grups>3)
+  {
+    print("Error no podem fer m?s de 3 Grups pel Flowchart!")
+  }
+}
+
+
+#   FLOW-CHART 1 GRUP ----------------------------------
+
+#----------------------------------------------------------------------------------------------#
+#                        FLOW-CHART  1  GRUP
+#----------------------------------------------------------------------------------------------#
+
+
+diagramaFlowchart1G<-function(
+  pob_lab1=c("Pob Inicial","Pob Final"),
+  pob1=c(1000,50),
+  exc1=c(10,1),
+  exc_lab1=c('Edat>90 anys','kkk'),
+  colors=c('white','grey'),
+  forma=c('box','box')) 
+{
+  
+  if  (length(exc1)<=10)
+  {
+    
+    m1<-""
+    for (i in 1:(length(exc1) ))  
+    { 
+      m1<-paste0(m1,'->A',i) 
+      i=i+1 }
+    m1
+    #"->A1->A2"#
+    #---------------------------------------------------------------------------------------#
+    m2<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m2<-paste0(m2,' A',i,'->','E',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2
+    #A1->E1[color = black,dir=none]A2->E2[color = black,dir=none]
+    #---------------------------------------------------------------------------------------#
+    m3<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m3<-paste0(m3,' A',i,';') 
+      i=i+1 }
+    m3
+    #A1;A2 
+    #---------------------------------------------------------------------------------------#
+    m4<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m4<-paste0(m4,' E',i,';') 
+      i=i+1 }
+    m4
+    #E1; E2;
+    #---------------------------------------------------------------------------------------#
+    m5<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m5<-paste0(m5,'  subgraph {rank = same;',' A',i,';','E',i,'}') 
+      i=i+1 }
+    m5
+    #subgraph {rank = same; A1;E1}  subgraph {rank = same; A2;E2}
+    #---------------------------------------------------------------------------------------#
+    m6<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m6<-paste0(m6,'A',i,' [label =', "'@@",i+2,"']",';') 
+      i=i+1 }
+    m6
+    #A1 [label ='@@3'];A2 [label ='@@4'];
+    #---------------------------------------------------------------------------------------#  
+    m7<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m7<-paste0(m7,'E',i,' [label =', "'@@",i+(length(exc1)+2),"']",';') 
+      i=i+1 }
+    m7
+    #E1 [label ='@@5'];E2 [label ='@@6'];
+    #---------------------------------------------------------------------------------------#
+    m8<-""
+    for (i in 1:(length(exc1)) ) 
+    { 
+      m8<-paste0(m8," \n ","[",i+2,"]:paste0(' ')")
+      i=i+1 }
+    m8 
+    #" \n [3]:paste0(' ') \n [4]:paste0(' ')
+    #---------------------------------------------------------------------------------------#
+    paramet<-c(m1,m2,m3,m4,m5,m6,m7,m8)
+    #---------------------------------------------------------------------------------------#  
+    makao1<-paste0("digraph rai {","graph[layout = dot]",  
+                   "node[shape=",forma[1],",","fontsize=12,fontname=Helvetica,width=0.9,
+                   penwidth=0.9,color=black,style=filled,fillcolor=",colors[1],"]",
+                   "P1;P2;", "node[shape=point,width =0,penwidth=0,color=black]",
+                   paramet[3],
+                   "node[shape=",forma[2],",","fontsize=8,fontname='Courier New',width=0.5,penwidth=0.5,style=filled,fillcolor=",colors[2],"]",
+                   paramet[4],
+                   " \n ","P1 [label = '@@1']","P2 [label = '@@2']",
+                   paramet[6],
+                   paramet[7],
+                   " \n ","edge[width=0.5,penwidth=0.5,arrowhead=vee]",
+                   " \n ","P1",
+                   paramet[1],
+                   "->P2[color = black,dir=none] ",
+                   " \n ",
+                   paramet[2],
+                   " \n ",
+                   paramet[5],"}",
+                   "\n[1]:paste0('", pob_lab1[1], " \\n ", "[N = ',", pob1[1], ",']')"   ,
+                   "\n[2]:paste0('", pob_lab1[2], " \\n ", "[N = ',", pob1[2], ",']')"   ,
+                   paramet[8],
+                   "\n[5]:paste0('", exc_lab1[1], " \\n ", "[N = ',", exc1[1], ",']')"   ,
+                   "\n[6]:paste0('", exc_lab1[2], " \\n ", "[N = ',", exc1[2], ",']')"  ,
+                   "\n[7]:paste0('", exc_lab1[3], " \\n ", "[N = ',", exc1[3], ",']')"   ,
+                   "\n[8]:paste0('", exc_lab1[4], " \\n ", "[N = ',", exc1[4], ",']')"  ,
+                   "\n[9]:paste0('", exc_lab1[5], " \\n ", "[N = ',", exc1[5], ",']')"   ,
+                   "\n[10]:paste0('", exc_lab1[6], " \\n ", "[N = ',", exc1[6], ",']')"  ,
+                   "\n[11]:paste0('", exc_lab1[7], " \\n ", "[N = ',", exc1[7], ",']')"   ,
+                   "\n[12]:paste0('", exc_lab1[8], " \\n ", "[N = ',", exc1[8], ",']')"  ,
+                   "\n[13]:paste0('", exc_lab1[9], " \\n ", "[N = ',", exc1[9], ",']')"   ,
+                   "\n[14]:paste0('", exc_lab1[10], " \\n ", "[N = ',", exc1[10], ",']')"  
+                   
+    )
+    
+    
+    #---------------------------------------------------------------------------------------#
+    DiagrammeR::grViz(makao1)
+    #---------------------------------------------------------------------------------------#
+    
+    
+  }
+  else
+  {print("ERROR!, Les Exlusions han de ser iguals o inferiors a 10 !")
+    
+  }
+}
+#---------------------------------------------------------------------------------------# 
+
+
+#----------------------------------------------------------------------------------------------#
+#                               2  GRUPS
+#----------------------------------------------------------------------------------------------#
+
+#   FLOW-CHART 2 GRUPS  ----------------------------------
+
+
+diagramaFlowchart2G<-function(
+  pob_lab=c("Poblaci? Total"),
+  pob_lab1=c("Poblaci? Inicial A","Poblaci? Final A"),
+  pob_lab2=c("Poblaci? Inicial B","Poblaci? Final B"),
+  pob=c(70211123),
+  pob1=c(10088,50),
+  exc1=c(1021,111,9),
+  exc_lab1=c('Edat>90 anys','Cardio','J'),
+  pob2=c(19002,599),
+  exc2=c(1002,150,90),
+  exc_lab2=c('Edat>76 anys','Rata','U'),
+  colors=c('white','grey'),
+  forma=c('box','box')            ) 
+{
+  
+  if  (length(exc1)<=10 && length(exc2)<=10)
+  {
+    
+    #-----------------------------------------------------------------------------------#
+    m1a<-""
+    for (i in 1:(length(exc1) ))  
+    { 
+      m1a<-paste0(m1a,'->A',i) 
+      i=i+1 }
+    m1a
+    #->A1->A2->A3    
+    #-----------------------------------------------------------------------------------#
+    m1b<-""
+    for (i in 1:(length(exc2) ))  
+    { 
+      m1b<-paste0(m1b,'->B',i) 
+      i=i+1 }
+    m1b
+    #->B1->B2->B3
+    #-----------------------------------------------------------------------------------#
+    m2a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m2a<-paste0(m2a,' A',i,'->','E_A',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2a
+    #A1->E_A1[color = black,dir=none] A2->E_A2[color = black,dir=none] A3->E_A3[color = black,dir=none]
+    #-----------------------------------------------------------------------------------#
+    m2b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m2b<-paste0(m2b,' B',i,'->','E_B',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2b
+    #B1->E_B1[color = black,dir=none] B2->E_B2[color = black,dir=none] B3->E_B3[color = black,dir=none]    
+    #-----------------------------------------------------------------------------------#
+    m3a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m3a<-paste0(m3a,' A',i,';') 
+      i=i+1 }
+    m3a
+    #A1; A2; A3;
+    #-----------------------------------------------------------------------------------#
+    m3b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m3b<-paste0(m3b,' B',i,';') 
+      i=i+1 }
+    m3b
+    #" B1; B2; B3;"
+    #-----------------------------------------------------------------------------------#
+    m4a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m4a<-paste0(m4a,' E_A',i,';') 
+      i=i+1 }
+    m4a
+    #E_A1; E_A2; E_A3;
+    #-----------------------------------------------------------------------------------#
+    m4b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m4b<-paste0(m4b,' E_B',i,';') 
+      i=i+1 }
+    m4b
+    #E_B1; E_B2; E_B3;
+    #-----------------------------------------------------------------------------------#
+    m5a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m5a<-paste0(m5a,'  subgraph {rank = same;',' A',i,';','E_A',i,';','}') 
+      i=i+1 }
+    m5a
+    # subgraph {rank = same; A1;E_A1;}  subgraph {rank = same; A2;E_A2;}  subgraph {rank = same; A3;E_A3;}
+    #-----------------------------------------------------------------------------------#
+    m5b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m5b<-paste0(m5b,'  subgraph {rank = same;',' B',i,';','E_B',i,';','}') 
+      i=i+1 }
+    m5b
+    #subgraph {rank = same; B1;E_B1;}  subgraph {rank = same; B2;E_B2;}  subgraph {rank = same; B3;E_B3;}
+    #-----------------------------------------------------------------------------------#
+    m6a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m6a<-paste0(m6a,'A',i,'[label=', "'@@",i+5,"']",';') 
+      i=i+1 }
+    m6a
+    #A1 A1[label='@@6'];A2[label='@@7'];A3[label='@@8'];
+    #-----------------------------------------------------------------------------------#
+    m6b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m6b<-paste0(m6b,'B',i,'[label=', "'@@",(i+length(exc2))+5,"']",';') 
+      i=i+1 }
+    m6b
+    #B1[label='@@9'];B2[label='@@10'];B3[label='@@11'];
+    #-----------------------------------------------------------------------------------#
+    m7a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m7a<-paste0(m7a,'E_A',i,' [label =', "'@@",19+i,"']",';') 
+      i=i+1 }
+    m7a
+    #E_A1 [label ='@@20'];E_A2 [label ='@@21'];E_A3 [label ='@@22'];
+    #-----------------------------------------------------------------------------------#
+    m7b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m7b<-paste0(m7b,'E_B',i,' [label =', "'@@",29+i,"']",';') 
+      i=i+1 }
+    m7b
+    #E_B1 [label ='@@30'];E_B2 [label ='@@31'];E_B3 [label ='@@32'];
+    #-----------------------------------------------------------------------------------#
+    #-----------------------------------------------------------------------------------#
+    paramet2<-c(m1a,m1b,m2a,m2b,m3a,m3b,m4a,m4b,m5a,m5b,m6a,m6b,m7a,m7b)
+    #-----------------------------------------------------------------------------------#
+    makao2<-paste0("digraph rai {","graph[layout = dot]",  
+                   "node[shape=",forma[1],",","fontsize=12,fontname=Helvetica,width=0.9,penwidth=0.9,color=black,style=filled,fillcolor=",colors[1],"]"," P_T;PA_I;PA_F;PB_I;PB_F ", 
+                   
+                   "node[shape=",forma[2],",","fontsize=8,fontname='Courier New',width=0,penwidth=0,style=filled,fillcolor=",colors[2],"]",
+                   paramet2[7],paramet2[8],
+                   
+                   "node[shape=point,width =0,penwidth=0,color=black,fontname='Courier New']",paramet2[5],paramet2[6],
+                   
+                   " \n ","P_T[label='@@1']","PA_I[label='@@2']","PA_F[label='@@4']","PB_I[label='@@3']","PB_F[label='@@5']",
+                   
+                   paramet2[13],paramet2[14],
+                   
+                   paramet2[11],paramet2[12],
+                   
+                   " \n ","edge[width=0.5,penwidth=0.5,arrowhead=vee]",
+                   " \n ","P_T->PA_I[color = black,arrowhead=vee]",
+                   " \n ","P_T->PB_I[color = black,arrowhead=vee]",
+                   " \n ","PA_I",paramet2[1],"->PA_F[color = black,dir=none] ",
+                   " \n ",paramet2[3],
+                   " \n ","PB_I",paramet2[2],"->PB_F[color = black,dir=none] ",
+                   " \n ",paramet2[4],
+                   " \n ",paramet2[9],
+                   " \n ",paramet2[10],"}",
+                   " \n[1]:paste0('", pob_lab[1], " \\n "," [N = ',",  pob[1], ",']')",
+                   " \n[2]:paste0('", pob_lab1[1]," \\n ", " [N = ',", pob1[1], ",']')",
+                   " \n[3]:paste0('", pob_lab2[1]," \\n ", " [N = ',", pob2[1], ",']')",
+                   " \n[4]:paste0('", pob_lab1[2]," \\n ", " [N = ',", pob1[2], ",']')",
+                   " \n[5]:paste0('", pob_lab2[2]," \\n ", " [N = ',", pob2[2], ",']')",
+                   " \n[6]:paste0('')"," \n[7]:paste0('')"," \n[8]:paste0('')"," \n[9]:paste0('')",
+                   " \n[10]:paste0('')"," \n[11]:paste0('')"," \n[12]:paste0('')"," \n[13]:paste0('')",
+                   " \n[14]:paste0('')"," \n[15]:paste0('')"," \n[16]:paste0('')"," \n[17]:paste0('')",
+                   " \n[18]:paste0('')"," \n[19]:paste0('')",
+                   " \n[20]:paste0('", exc_lab1[1]," \\n ", "[N = ',", exc1[1], ",']')",
+                   " \n[21]:paste0('", exc_lab1[2]," \\n ", "[N = ',", exc1[2], ",']')",
+                   " \n[22]:paste0('", exc_lab1[3]," \\n ", "[N = ',", exc1[3], ",']')",
+                   " \n[23]:paste0('", exc_lab1[4]," \\n ", "[N = ',", exc1[4], ",']')",
+                   " \n[24]:paste0('", exc_lab1[5]," \\n ", "[N = ',", exc1[5], ",']')",
+                   " \n[25]:paste0('", exc_lab1[6]," \\n ", "[N = ',", exc1[6], ",']')",
+                   " \n[26]:paste0('", exc_lab1[7]," \\n ", "[N = ',", exc1[7], ",']')",
+                   " \n[27]:paste0('", exc_lab1[8]," \\n ", "[N = ',", exc1[8], ",']')",
+                   " \n[28]:paste0('", exc_lab1[9]," \\n ", "[N = ',", exc1[9], ",']')",
+                   " \n[29]:paste0('", exc_lab1[10]," \\n ", "[N = ',",exc1[10], ",']')",
+                   " \n[30]:paste0('", exc_lab2[1]," \\n ", "[N = ',", exc2[1], ",']')",
+                   " \n[31]:paste0('", exc_lab2[2]," \\n ", "[N = ',", exc2[2], ",']')",
+                   " \n[32]:paste0('", exc_lab2[3]," \\n ", "[N = ',", exc2[3], ",']')",
+                   " \n[33]:paste0('", exc_lab2[4]," \\n ", "[N = ',", exc2[4], ",']')",
+                   " \n[34]:paste0('", exc_lab2[5]," \\n ", "[N = ',", exc2[5], ",']')",
+                   " \n[35]:paste0('", exc_lab2[6]," \\n ", "[N = ',", exc2[6], ",']')",
+                   " \n[36]:paste0('", exc_lab2[7]," \\n ", "[N = ',", exc2[7], ",']')",
+                   " \n[37]:paste0('", exc_lab2[8]," \\n ", "[N = ',", exc2[8], ",']')",
+                   " \n[38]:paste0('", exc_lab2[9]," \\n ", "[N = ',", exc2[9], ",']')",
+                   " \n[39]:paste0('", exc_lab2[10]," \\n ", "[N = ',",exc2[10], ",']')"
+    )
+    
+    #---------------------------------------------------------------------------------------#
+    DiagrammeR::grViz(makao2)
+    #---------------------------------------------------------------------------------------#
+    
+  }
+  else
+  {print("ERROR!, Les Exlusions han de ser iguals o inferiors a 10 !")
+    
+    
+    
+  }
+}
+#---------------------------------------------------------------------------------------#
+
+#----------------------------------------------------------------------------------------------#
+#                              3  GRUPS
+#----------------------------------------------------------------------------------------------#
+
+#   FLOW-CHART 3 GRUPS  ----------------------------------
+
+
+diagramaFlowchart3G<-function(
+  pob_lab=c("Poblaci? Total"),
+  pob_lab1=c("Poblaci? Inicial A","Poblaci? Final A"),
+  pob_lab2=c("Poblaci? Inicial B","Poblaci? Final B"),
+  pob_lab3=c("Poblaci? Inicial C","Poblaci? Final C"),
+  pob=c(70211123),
+  pob1=c(10088,50),
+  exc1=c(1021,111,9),
+  exc_lab1=c('Edat>90 anys','Cardio','J'),
+  pob2=c(19002,599),
+  exc2=c(1002,150,90),
+  exc_lab2=c('Edat>76 anys','Rata','U'),
+  pob3=c(19002,599),
+  exc3=c(1002,150,0),
+  exc_lab3=c('Edat>91 anys','Pulm?','L'),
+  colors=c('white','grey'),
+  forma=c('box','box')            ) 
+{
+  
+  if  (length(exc1)<=10 && length(exc2)<=10  && length(exc3)<=10    )
+  {
+    
+    #-----------------------------------------------------------------------------------#
+    m1a<-""
+    for (i in 1:(length(exc1) ))  
+    { 
+      m1a<-paste0(m1a,'->A',i) 
+      i=i+1 }
+    m1a
+    #"->A1->A2->A3"#
+    #-----------------------------------------------------------------------------------#
+    m1b<-""
+    for (i in 1:(length(exc2) ))  
+    { 
+      m1b<-paste0(m1b,'->B',i) 
+      i=i+1 }
+    m1b
+    #"->B1->B2->B3"
+    #-----------------------------------------------------------------------------------#
+    m1c<-""
+    for (i in 1:(length(exc3) ))  
+    { 
+      m1c<-paste0(m1c,'->C',i) 
+      i=i+1 }
+    m1c
+    #"->C1->C2->C3"
+    #-----------------------------------------------------------------------------------#
+    m2a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m2a<-paste0(m2a,' A',i,'->','E_A',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2a
+    #A1->E_A1[color = black,dir=none] A2->E_A2[color = black,dir=none] A3->E_A3[color = black,dir=none]
+    #-----------------------------------------------------------------------------------#
+    m2b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m2b<-paste0(m2b,' B',i,'->','E_B',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2b
+    #B1->E_B1[color = black,dir=none] B2->E_B2[color = black,dir=none]
+    #-----------------------------------------------------------------------------------#
+    m2c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m2c<-paste0(m2c,' C',i,'->','E_C',i,'[color = black,dir=none]') 
+      i=i+1 }
+    m2c
+    #C1->E_C1[color = black,dir=none] C2->E_C2[color = black,dir=none] C3->E_C3[color = black,dir=none]
+    #-----------------------------------------------------------------------------------#    
+    m3a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m3a<-paste0(m3a,' A',i,';') 
+      i=i+1 }
+    m3a
+    # A1; A2; A3;
+    #-----------------------------------------------------------------------------------#
+    m3b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m3b<-paste0(m3b,' B',i,';') 
+      i=i+1 }
+    m3b
+    #B1; B2; B3; 
+    #-----------------------------------------------------------------------------------#
+    m3c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m3c<-paste0(m3c,' C',i,';') 
+      i=i+1 }
+    m3c
+    #C1; C2; C3;
+    #-----------------------------------------------------------------------------------#
+    m4a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m4a<-paste0(m4a,' E_A',i,';') 
+      i=i+1 }
+    m4a
+    #E_A1; E_A2; E_A3;
+    #-----------------------------------------------------------------------------------#
+    m4b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m4b<-paste0(m4b,' E_B',i,';') 
+      i=i+1 }
+    m4b
+    #E_B1; E_B2; E_B3;"
+    #-----------------------------------------------------------------------------------#
+    m4c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m4c<-paste0(m4c,' E_C',i,';') 
+      i=i+1 }
+    m4c
+    #E_C1; E_C2; E_C3;
+    #-----------------------------------------------------------------------------------#
+    m5a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m5a<-paste0(m5a,'  subgraph {rank = same;',' A',i,';','E_A',i,';','}') 
+      i=i+1 }
+    m5a
+    #subgraph {rank = same; A1;E_A1;}  subgraph {rank = same; A2;E_A2;}  subgraph {rank = same; A3;E_A3;}"
+    #-----------------------------------------------------------------------------------#
+    m5b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m5b<-paste0(m5b,'  subgraph {rank = same;',' B',i,';','E_B',i,';','}') 
+      i=i+1 }
+    m5b
+    #subgraph {rank = same; B1;E_B1;}  subgraph {rank = same; B2;E_B2;}  subgraph {rank = same; B3;E_B3;}
+    #-----------------------------------------------------------------------------------#
+    m5c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m5c<-paste0(m5c,'  subgraph {rank = same;',' C',i,';','E_C',i,';','}') 
+      i=i+1 }
+    m5c
+    # subgraph {rank = same; C1;E_C1;}  subgraph {rank = same; C2;E_C2;}  subgraph {rank = same; C3;E_C3;}
+    #-----------------------------------------------------------------------------------#
+    m6a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m6a<-paste0(m6a,'A',i,'[label=', "'@@",i+7,"']",';') 
+      i=i+1 }
+    m6a
+    #A1[label='@@8'];A2[label='@@9'];A3[label='@@10'];
+    #-----------------------------------------------------------------------------------#
+    m6b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m6b<-paste0(m6b,'B',i,'[label=', "'@@",(i+length(exc2))+7,"']",';') 
+      i=i+1 }
+    m6b
+    #B1[label='@@11'];B2[label='@@12'];B3[label='@@13'];
+    #-----------------------------------------------------------------------------------#
+    m6c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m6c<-paste0(m6c,'C',i,'[label=', "'@@",(i+length(exc3))+10,"']",';') 
+      i=i+1 }
+    m6c
+    #C1[label='@@14'];C2[label='@@15'];C3[label='@@16'];"
+    #-----------------------------------------------------------------------------------#
+    m7a<-""
+    for (i in 1:(length(exc1)))
+    { 
+      m7a<-paste0(m7a,'E_A',i,' [label =', "'@@",19+i,"']",';') 
+      i=i+1 }
+    m7a
+    #"E_A1 [label ='@@20'];E_A2 [label ='@@21'];E_A3 [label ='@@22']"
+    #-----------------------------------------------------------------------------------#
+    m7b<-""
+    for (i in 1:(length(exc2)))
+    { 
+      m7b<-paste0(m7b,'E_B',i,' [label =', "'@@",29+i,"']",';') 
+      i=i+1 }
+    m7b
+    #E_B1 [label ='@@30'];E_B2 [label ='@@31'];E_B3 [label ='@@32']
+    #-----------------------------------------------------------------------------------#
+    m7c<-""
+    for (i in 1:(length(exc3)))
+    { 
+      m7c<-paste0(m7c,'E_C',i,' [label =', "'@@",39+i,"']",';') 
+      i=i+1 }
+    m7c
+    #"E_C1 [label ='@@40'];E_C2 [label ='@@41'];E_C3 [label ='@@42'];"
+    #-----------------------------------------------------------------------------------#
+    paramet2<-c(m1a,m1b,m1c,m2a,m2b,m2c,m3a,m3b,m3c,m4a,m4b,m4c,m5a,m5b,m5c,m6a,m6b,m6c,m7a,m7b,m7c)
+    #-----------------------------------------------------------------------------------#
+    makao3<-paste0("digraph rai {","graph[layout = dot]",  
+                   "node[shape=",forma[1],",","fontsize=12,fontname=Helvetica,width=0.9,penwidth=0.9,color=black,style=filled,fillcolor=",colors[1],"]"," P_T;PA_I;PA_F;PB_I;PB_F;PC_I;PC_F ", 
+                   
+                   "node[shape=",forma[2],",","fontsize=8,fontname='Courier New',width=0,penwidth=0,style=filled,fillcolor=",colors[2],"]",
+                   paramet2[10],paramet2[11],paramet2[12],
+                   
+                   "node[shape=point,width =0,penwidth=0,color=black,fontname='Courier New']",paramet2[7],paramet2[8],paramet2[9],
+                   
+                   " \n ","P_T[label='@@1']","PA_I[label='@@2']","PA_F[label='@@5']","PB_I[label='@@3']","PB_F[label='@@6']","PC_I[label='@@4']","PC_F[label='@@7']",
+                   " \n ",paramet2[19],paramet2[20],paramet2[21],
+                   " \n ",paramet2[16],paramet2[17],paramet2[18],
+                   " \n ","edge[width=0.5,penwidth=0.5,arrowhead=vee]",
+                   " \n ","P_T->PA_I[color = black,arrowhead=vee]",
+                   " \n ","P_T->PB_I[color = black,arrowhead=vee]",
+                   " \n ","P_T->PC_I[color = black,arrowhead=vee]",
+                   " \n ","PA_I",paramet2[1],"->PA_F[color = black,dir=none] ",
+                   " \n ",paramet2[4],
+                   " \n ","PB_I",paramet2[2],"->PB_F[color = black,dir=none] ",
+                   " \n ",paramet2[5],
+                   " \n ","PC_I",paramet2[3],"->PC_F[color = black,dir=none] ",
+                   " \n ",paramet2[6],
+                   
+                   " \n ",paramet2[13],
+                   " \n ",paramet2[14],
+                   " \n ",paramet2[15],"}",
+                   
+                   " \n[1]:paste0('", pob_lab[1], " \\n ", "  [N = ',",  pob[1], ",']')",
+                   " \n[2]:paste0('", pob_lab1[1]," \\n ",  " [N = ',", pob1[1], ",']')",
+                   " \n[3]:paste0('", pob_lab2[1]," \\n ", " [N = ',", pob2[1], ",']')",
+                   " \n[4]:paste0('", pob_lab3[1]," \\n ", " [N = ',", pob3[1], ",']')",
+                   " \n[5]:paste0('", pob_lab1[2]," \\n ", " [N = ',", pob1[2], ",']')",
+                   " \n[6]:paste0('", pob_lab2[2]," \\n ", " [N = ',", pob2[2], ",']')",
+                   " \n[7]:paste0('", pob_lab3[2]," \\n ", " [N = ',", pob3[2], ",']')",
+                   " \n[8]:paste0('')"," \n[9]:paste0('')"," \n[10]:paste0('')"," \n[11]:paste0('')",
+                   " \n[12]:paste0('')"," \n[13]:paste0('')"," \n[14]:paste0('')"," \n[15]:paste0('')",
+                   " \n[16]:paste0('')"," \n[17]:paste0('')"," \n[18]:paste0('')"," \n[19]:paste0('')",
+                   " \n[20]:paste0('", exc_lab1[1]," \\n ", "[N = ',", exc1[1], ",']')",
+                   " \n[21]:paste0('", exc_lab1[2]," \\n ", "[N = ',", exc1[2], ",']')",
+                   " \n[22]:paste0('", exc_lab1[3]," \\n ", "[N = ',", exc1[3], ",']')",
+                   " \n[23]:paste0('", exc_lab1[4]," \\n ", "[N = ',", exc1[4], ",']')",
+                   " \n[24]:paste0('", exc_lab1[5]," \\n ", "[N = ',", exc1[5], ",']')",
+                   " \n[25]:paste0('", exc_lab1[6]," \\n ", "[N = ',", exc1[6], ",']')",
+                   " \n[26]:paste0('", exc_lab1[7]," \\n ", "[N = ',", exc1[7], ",']')",
+                   " \n[27]:paste0('", exc_lab1[8]," \\n ", "[N = ',", exc1[8], ",']')",
+                   " \n[28]:paste0('", exc_lab1[9]," \\n ", "[N = ',", exc1[9], ",']')",
+                   " \n[20]:paste0('", exc_lab1[10]," \\n ", "[N = ',",exc1[10], ",']')",
+                   " \n[30]:paste0('", exc_lab2[1]," \\n ", "[N = ',", exc2[1], ",']')",
+                   " \n[31]:paste0('", exc_lab2[2]," \\n ", "[N = ',", exc2[2], ",']')",
+                   " \n[32]:paste0('", exc_lab2[3]," \\n ", "[N = ',", exc2[3], ",']')",
+                   " \n[33]:paste0('", exc_lab2[4]," \\n ", "[N = ',", exc2[4], ",']')",
+                   " \n[34]:paste0('", exc_lab2[5]," \\n ", "[N = ',", exc2[5], ",']')",
+                   " \n[35]:paste0('", exc_lab2[6]," \\n ", "[N = ',", exc2[6], ",']')",
+                   " \n[36]:paste0('", exc_lab2[7]," \\n ", "[N = ',", exc2[7], ",']')",
+                   " \n[37]:paste0('", exc_lab2[8]," \\n ", "[N = ',", exc2[8], ",']')",
+                   " \n[38]:paste0('", exc_lab2[9]," \\n ", "[N = ',", exc2[9], ",']')",
+                   " \n[39]:paste0('", exc_lab2[10]," \\n ","[N = ',", exc2[10], ",']')",
+                   " \n[40]:paste0('", exc_lab3[1]," \\n ", "[N = ',", exc3[1], ",']')",
+                   " \n[41]:paste0('", exc_lab3[2]," \\n ", "[N = ',", exc3[2], ",']')",
+                   " \n[42]:paste0('", exc_lab3[3]," \\n ", "[N = ',", exc3[3], ",']')",
+                   " \n[43]:paste0('", exc_lab3[4]," \\n ", "[N = ',", exc3[4], ",']')",
+                   " \n[44]:paste0('", exc_lab3[5]," \\n ", "[N = ',", exc3[5], ",']')",
+                   " \n[45]:paste0('", exc_lab3[6]," \\n ", "[N = ',", exc3[6], ",']')",
+                   " \n[46]:paste0('", exc_lab3[7]," \\n ", "[N = ',", exc3[7], ",']')",
+                   " \n[47]:paste0('", exc_lab3[8]," \\n ", "[N = ',", exc3[8], ",']')",
+                   " \n[48]:paste0('", exc_lab3[9]," \\n ", "[N = ',", exc3[9], ",']')",
+                   " \n[49]:paste0('", exc_lab3[10]," \\n ", "[N = ',",exc3[10], ",']')"
+    )                  
+    
+    #---------------------------------------------------------------------------------------#  
+    DiagrammeR::grViz(makao3)
+    #---------------------------------------------------------------------------------------#
+    
+  }
+  else
+  {print("ERROR!, Les Exlusions han de ser iguals o inferiors a 10 !")
+    
+  }
+}
+
+
+
+
+#  NETEJA NOMS DE VARIABLES DE CARACTERS EXTRANYS ("/","(".....) ---------------
+
+netejar.noms.variables<-function(dt=LIPOS_EORTEGA){
+  
+  paco<-names(dt) %>% 
+    iconv("UTF-8","ASCII","") %>% 
+    stringr::str_replace("/","") %>% 
+    stringr::str_replace_all("\\(","") %>% 
+    stringr::str_replace_all("\\)","") %>% 
+    stringr::str_replace_all("\\/","") %>% 
+    stringr::str_trim() %>% 
+    stringr::str_replace_all(" ","_") %>% 
+    stringr::str_replace_all("-","_")
+  
+  names(dt)<-paco
+  dt
+  
+}
+
+
+#  Comptar_valors(dt, vector_variables, valor)  ##################
+# en funció de vector de variables, i un valor("Yes")
+
+comptar_valors<-function(dt=dadesevents,variables=c("EV.TER.ARTER_PERIF","EV.TER.AVC"),valor="Yes"){
+  
+  # dt=dades
+  # variables=c("EV1_ULCERES", "EV2_ULCERES", "EV3_ULCERES", "EV4_ULCERES")
+  # valor="Yes"
+
+  # Concateno valors
+  pepito<-paste0("paste0(",paste0(variables,collapse = ","),")")
+  
+  dt<-dt %>% 
+    mutate_("combi_vars"=pepito) %>% 
+    mutate(
+      num_valors=str_count(combi_vars,valor)) %>% 
+    select(-combi_vars)
+  
+}
+
+# mostreig_ids () Mostreja ids d'una base de dades  ---------------------
+
+mostreig_ids<-function(dt,id="idp",n_mostra=100) {
+  
+  # n_mostra<-100
+  # dt<-FX.FACTURATS_PRESCRITS 
+  id_sym<-sym(id)
+  id_sample<-dt %>% distinct(!!id_sym) %>%sample_n(size=n_mostra) 
+  dt<-id_sample %>% left_join(dt,by=id) 
+  
+}
+
+
+#
+# Funció per calcular el risc REGICOR (regicor)  -----------------
+#
+# age: númerica (anys)
+# sex: text, 'H'  homes i 'D' dones
+# smoker, diabetes: binària (0 no i 1 si)
+# coltot i colhdl: en mg/dL
+# sbp i dbp: númeric (mmHg)
+
+regicor <- function(age, sex, smoker, diabetes, coltot, colhdl, sbp, dbp, divide = 1){
+  n <- length(age)
+  diabetes <- as.numeric(diabetes)
+  bp_opti <- ifelse(sbp <  120 & dbp < 80, 1, 0)
+  bp_high <- ifelse((130 <= sbp & sbp < 140) | (85 <= dbp & dbp < 90), 1, 0)
+  bp_i <- ifelse((140 <= sbp & sbp < 160) | (90 <= dbp & dbp < 100), 1, 0)
+  bp_ii <- ifelse(160 <= sbp | 100 <= dbp, 1, 0)
+  i_bp_ii <- (bp_ii == 1)
+  bp_opti[i_bp_ii] <- bp_high[i_bp_ii] <- bp_i[i_bp_ii] <- 0
+  i_bp_i <- (bp_i == 1)
+  bp_opti[i_bp_i] <- bp_high[i_bp_i] <- 0
+  i_bp_high <- (bp_high == 1)
+  bp_opti[i_bp_high] <- 0
+  
+  c_160 <- ifelse(coltot < 160, 1, 0)
+  c200_239 <- ifelse(200 <= coltot & coltot < 240, 1, 0)
+  c240_279 <- ifelse(240 <= coltot & coltot < 280, 1, 0)
+  c280_ <- ifelse(280 <= coltot, 1, 0)
+  h_35 <- ifelse(colhdl < 35, 1, 0)
+  h35_44 <- ifelse(35 <= colhdl & colhdl < 45, 1, 0)
+  h45_49 <- ifelse(45 <= colhdl & colhdl < 50, 1, 0)
+  h50_59 <- ifelse(50 <= colhdl & colhdl < 60, 1, 0)
+  h60_ <- ifelse(60 <= colhdl, 1, 0)
+  
+  men <- (sex == 'H')
+  l_chol = rep(0, n)
+  l_chol[men] <- (0.04826*age - 0.65945*c_160 + 0.17692*c200_239 + 0.50539*c240_279 +
+                    0.65713*c280_ + 0.49744*h_35 + 0.24310*h35_44 - 0.05107*h50_59 - 0.48660*h60_ -
+                    0.00226*bp_opti + 0.28320*bp_high + 0.52168*bp_i + 0.61859*bp_ii +
+                    0.42839*diabetes + 0.52337*smoker)[men]
+  l_chol[!men] <- (0.33766*age - 0.00268*(age^2) - 0.26138*c_160 + 0.20771*c200_239 +
+                     0.24385*c240_279 + 0.53513*c280_ + 0.84312*h_35 + 0.377096*h35_44 +
+                     0.19785*h45_49 - 0.42951*h60_ - 0.53363*bp_opti - 0.06773*bp_high +
+                     0.26288*bp_i + 0.46573*bp_ii + 0.59626*diabetes + 0.29246*smoker)[!men]
+  g_chol = rep(0, n)
+  g_chol[men] <- 3.489
+  g_chol[!men] = 10.279
+  b_chol <- exp(l_chol - g_chol)
+  result <- rep(0,n)
+  result[men] <- (1 - (1 -(1 - 0.951)/divide)^b_chol[men])*100 
+  result[!men] <- (1 - (1 - (1 - 0.978)/divide)^b_chol[!men])*100
+  result
+}
+
+
+
+
+#      FI GENERAR FUNCIONs  
+
