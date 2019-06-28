@@ -2059,7 +2059,7 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
     dplyr::distinct(idp,dtindex,cod,agr,.keep_all = TRUE)                          # Eliminar duplicats PER idp-dtindex-cod-agr 
   
  # Agregació de temps acumulats (dies) o primera data dins finestra 
-  if (not(agregar_data)) {
+  if (!(agregar_data)) {
   # suma dies acumulats
   prescripcions_agr<-prescripcions_agr %>%
     dplyr::group_by(idp,dtindex,agr) %>% 
