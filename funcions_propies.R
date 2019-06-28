@@ -1511,7 +1511,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
     plotROC::geom_roc(n.cuts = 0)
   
   plot_curve<- plot_curve + 
-    # annotate("text", x = .75, y = .25, label = paste("AUC =", round(plotROC::calc_auc(plot_curve)["AUC"], 2))) +
+    # anotate("text", x = .75, y = .25, label = paste("AUC =", round(plotROC::calc_auc(plot_curve)["AUC"], 2))) +
     annotate("text", x = .75, y = .25, label = paste("95 CI%:",round(auc_ci[2],2),"-",round(auc_ci[3],2)))
   
   HL_test<-ResourceSelection::hoslem.test(dades_prediccio$event, dades_prediccio$prediccio, g = 10)
@@ -2117,7 +2117,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   dt<-afegir_dataindex(dt,bd.dindex)
 
   # Si no existeix agr el creo de crear
-  if (not("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
+  if (!("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
   
   ## Filtrar CATALEG 
   dt.agregadors<-dt.agregadors %>% select_("cod","agr"=camp_agregador)
@@ -2146,7 +2146,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
     dplyr::distinct(idp,dtindex,cod,agr,data,datafi,.keep_all = TRUE)             # Elimino duplicats per idp-dtindex-cod-agr
   
   # Agregació de nombre d'envasos per defecte             
-  if (not(agregar_data)) {
+  if (!(agregar_data)) {
     
     dt_agregada <- pepito %>%                   # Agrego --> Suma de numero d'envasos per idp-dtindex-agr 
       dplyr::select(c(idp,dtindex,agr,env)) %>% 
