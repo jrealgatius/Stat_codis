@@ -2288,7 +2288,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 #  FLOW-CHART A partir de criteris d'exclusió en taulavariable  -----------------------------------
 
 criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
-                                     pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre=NA,grups=NA){
+                                     pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
   
   # dt=dadesinicials
   # taulavariables = conductor_variables
@@ -2296,7 +2296,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   # etiquetes="exc_lab"
   # grups="grup"
   # pob_lab=c("Pob inicial","Pob final")
-  # ordre=NA
+  # ordre="exc_ordre"
   
   ### Si hi ha grups capturar el nombre categories
   # Per defecte UN sol grup
