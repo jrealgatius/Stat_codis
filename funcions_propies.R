@@ -2061,7 +2061,7 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
     dplyr::distinct(idp,dtindex,cod,agr,.keep_all = TRUE)                          # Eliminar duplicats PER idp-dtindex-cod-agr 
   
  # Agregació de temps acumulats (dies) o primera data dins finestra 
-  if (not(agregar_data)) {
+  if (!(agregar_data)) {
   # suma dies acumulats
   prescripcions_agr<-prescripcions_agr %>%
     dplyr::group_by(idp,dtindex,agr) %>% 
@@ -2119,7 +2119,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   dt<-afegir_dataindex(dt,bd.dindex)
 
   # Si no existeix agr el creo de crear
-  if (not("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
+  if (!("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
   
   ## Filtrar CATALEG 
   dt.agregadors<-dt.agregadors %>% select_("cod","agr"=camp_agregador)
@@ -2148,7 +2148,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
     dplyr::distinct(idp,dtindex,cod,agr,data,datafi,.keep_all = TRUE)             # Elimino duplicats per idp-dtindex-cod-agr
   
   # Agregació de nombre d'envasos per defecte             
-  if (not(agregar_data)) {
+  if (!(agregar_data)) {
     
     dt_agregada <- pepito %>%                   # Agrego --> Suma de numero d'envasos per idp-dtindex-agr 
       dplyr::select(c(idp,dtindex,agr,env)) %>% 
