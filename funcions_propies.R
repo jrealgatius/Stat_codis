@@ -2099,55 +2099,73 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
 #  agregar_facturacio -------------------
 #  Retorna tibble (data.table) amb la suma d'envasos o data primera dispensació dins d'una finestra de temps per idp-dataindex      
 #  Arguments: historic de facturacions (PRESCRIPCIONS) , data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0) 
-#  Requereix (idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
+#  Requereix dt=(idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
 agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F){
   
-  # dt=FX.FACTURATS_PRESCRITS_1000000
-  # finestra.dies = c(-30,0)
+  # dt=FX.FACTURATS_PRESCRITS
+  # finestra.dies = c(-Inf,+Inf)
   # camp_agregador="GRUP"
   # dt.agregadors = conductor_variables
-  # bd.dindex = "20151231"
+  # bd.dindex = "20171231"
   # prefix="FD."
   # agregar_data=T
   
+  agregador_sym<-sym(camp_agregador)
+  ## Filtrar CATALEG per agrupador per camp_agregador
+  dt.agregadors<-dt.agregadors %>% select(cod,agr=!!agregador_sym)
+  dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
+  
+  # filtrar dt farmacs només per agregadors d'interes (camp_agregador)
+  print("Filtrant per farmac agregador")
+  dt<-dt %>% semi_join(dt.agregadors, by="cod")
+  
+  #### Afegir data index en l'historic de farmacs 
+  print("Afegint data index en historic de farmacs")
+  dt<-afegir_dataindex(dt,bd.dindex)
+
+  # Si no existeix agr el creo 
+  if (!("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
+  
+
+  #### Filtrar dt  per finestra temporal i genero data i datafi
+  print("Filtrant historic per finestra temporal i generant data i datafi")
   # Recode els numeros infinits
   finestra.dies=ifelse(finestra.dies==+Inf,99999,finestra.dies)
   finestra.dies=ifelse(finestra.dies==-Inf,-99999,finestra.dies)
-
-  #### Afegir data index en l'historic 
-    
-  dt<-afegir_dataindex(dt,bd.dindex)
-
-  # Si no existeix agr el creo de crear
-  if (!("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
-  
-  ## Filtrar CATALEG 
-  dt.agregadors<-dt.agregadors %>% select_("cod","agr"=camp_agregador)
-  dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
-  
-  #### Filtrar per finestra temporal 
   ##  
-  pepito<-dt %>% dplyr::mutate (
-    data=lubridate::ymd(paste0(as.character(dat),"15")),    # Data arrodonida al dia 15
-    datafi=data+lubridate::days(env*30),                  # Genero data fi en funció dels envasos
-    dtindex=lubridate::ymd(dtindex))
+
   
+  # Elimino funcions de llibreria lubridate
+  
+  pepito<-dt %>% dplyr::mutate (
+    data=paste0(as.character(dat),"15") %>% as.Date('%Y%m%d'),    # Data arrodonida al dia 15
+    datafi=data+(env*30),                  # Genero data fi en funció dels envasos
+    dtindex=as.Date(dtindex,'%Y%m%d'))
+
   # Estimo el nombre d'envasos de solapament per codi i agrego per codi diferent 
+  print ("Estimo el nombre d'envasos de solapament per codi i agrego per codi diferent")
+  
   pepito<-pepito %>% 
-    dplyr::mutate(interval2=dtindex+lubridate::days(finestra.dies[2]),
-                                   interval1=dtindex+lubridate::days(finestra.dies[1]), 
-                                   overlap = pmax(pmin(interval2, datafi) - pmax(interval1,data) + 1,0),
-                                   overlap=as.numeric(overlap),
-                                   env2=overlap/30) %>%
+    dplyr::mutate(interval2=dtindex+finestra.dies[2],
+                  interval1=dtindex+finestra.dies[1], 
+                  overlap = pmax(pmin(interval2, datafi) - pmax(interval1,data) + 1,0),
+                  overlap=as.numeric(overlap),
+                  env2=overlap/30) %>%
     dplyr::select(-agr,-dat,-interval2,-interval1,env,-env,env=env2) %>%      # Netejo variables
     filter(env>0.05)    # Selecciono files amb solapament d'envasos dins finestra (Elimino env>0.05)
   
-  # Capturo Agregador de CATALEG
+  
+  # Capturo Agregador de CATALEG i elimino duplicats
+  
+  print("Capturo Agregador de CATALEG i elimino duplicats")
   pepito<- pepito %>%  
     dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%      # Capturo agregador del cataleg
-    dplyr::distinct(idp,dtindex,cod,agr,data,datafi,.keep_all = TRUE)             # Elimino duplicats per idp-dtindex-cod-agr
+    dplyr::distinct(idp,dtindex,cod,agr,data,datafi,.keep_all = TRUE) %>%         # Elimino duplicats per idp-dtindex-cod-agr
+    as_tibble()
   
-  # Agregació de nombre d'envasos per defecte             
+  # Agregació de nombre d'envasos per defecte   
+  print("Agregant facturacio")
+  
   if (!(agregar_data)) {
     
     dt_agregada <- pepito %>%                   # Agrego --> Suma de numero d'envasos per idp-dtindex-agr 
@@ -2162,19 +2180,21 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   if (agregar_data){
     dt_agregada <- pepito %>%                    # Agrego --> data mínima  
       mutate(
-        int1=dtindex+lubridate::days(finestra.dies[1]),  # Si solapament inclou tota la finestra afago limit inferior de la finestra
-        data0=ifelse(data>=int1,data,int1),
-        data0=lubridate::as_date(data0)) %>% 
+        int1=dtindex+finestra.dies[1],  # Si solapament inclou tota la finestra afago limit inferior de la finestra
+        data0=ifelse(data>=int1,data,int1)) %>% 
         as_tibble() %>% 
       dplyr::select(c(idp,dtindex,agr,data=data0)) %>%
       dplyr::group_by(idp,dtindex,agr) %>% 
       dplyr::slice(which.min(data)) %>% 
       dplyr::ungroup() %>% 
-      dplyr::rename(FX=data)
+      dplyr::rename(FX=data) %>% 
+      mutate(FX=as.Date(FX,origin = "1970-01-01"))
     
     }
   
+  
   # Aplanamenta
+  print("Aplanamenta")
    dt_agregada<-dt_agregada %>% 
         tidyr::spread(agr,FX,sep=".") %>% 
         mutate_if(is.numeric, funs(ifelse(is.na(.), 0, .)))
