@@ -1787,7 +1787,7 @@ Pvalors_ajustats_taula<-function(objecte_taula=OR.ajust, p.valors='p valor', met
 afegir_dataindex<-function(dt_historic,bd.dindex="20161231") {
   
   # dt_historic=dt
-  # bd.dindex="20161231"
+  # bd.dindex=bd.dindex
   
   # Si es una constant generar una columna constant 
   if (is.numeric(bd.dindex) | is.character(bd.dindex)){
@@ -1880,10 +1880,13 @@ agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=
 
 agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="DG.",camp_agregador="agr") {
 
-  # dt=PROBLEMES_total
-  # bd.dindex =bdades_index
-  # dt.agregadors=CATALEG
+  # dt=HISTORIC_EVENTOS_TOTAL
+  # bd.dindex =IDS_CIPS
+  # dt.agregadors=dt_cataleg
   # finestra.dies=c(-Inf,0)
+  # finestra.dies = c(0,+Inf)
+  # prefix = "DG."
+  # camp_agregador = "Agrupador1"
 
   ## afegir en dataindex de BDINDEX si bd.dindex<>""
   #### Afegir + data index (+dtindex) en l'historic de problemes
@@ -1894,14 +1897,19 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
   ## filtrar per intervals de dates 
 
   # Convertir dates a numeric
-  dt<-dt %>% mutate(dat_num=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
-                    dtindex_num=dtindex %>% as.numeric()) %>% as_tibble()
   
+  if (class(dt$dat)=="Date") dt$dat_num=as.numeric(dt$dat)
+  if (class(dt$dtindex)=="Date") dt$dtindex_num=as.numeric(dt$dtindex)
   
+  if (class(dt$dat)!="Date") dt$dat_num=as.Date(as.character(dt$dat),format="%Y%m%d") %>% as.numeric()
+  if (class(dt$dtindex)!="Date") dt$dtindex_num=as.Date(as.character(dt$dtindex),format="%Y%m%d") %>% as.numeric()
+  
+  dt<-dt %>% as_tibble()
+    
+
   ##### filtrar per intervals de dates 
   dt<-dt %>% dplyr::filter(dat_num>= dtindex_num +finestra.dies[1] & 
                              dat_num<= dtindex_num +finestra.dies[2])
-  
   
   # dt<-dt[data.table::between(
   #   lubridate::ymd(dat),
