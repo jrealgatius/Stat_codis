@@ -389,6 +389,54 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   
 }
 
+# Retorna objecte Surv en dt a partir de dades (dt), event("20150531" / NA), dtindex(Date), dtsortida(20171231),  
+generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
+  
+  # dt=dades_dt
+  # event="DG.MCV"
+  # dtindex="dtindex"
+  # dtsortida="data_sortida"
+  
+  x<-sym(event)
+  dtindex<-sym(dtindex)
+  sortida<-sym(dtsortida)
+  
+  if(class(dt[[x]])!="Date" & class(dt[[sortida]])!="Date") {
+    
+    temp<-dt %>% select(!!dtindex,!!x,!!sortida) %>% 
+      mutate(
+        event=case_when(as.Date(as.character(!!x),"%Y%m%d")>0~1,
+                        is.na(!!x)~0),
+        data_final=case_when(as.Date(as.character(!!x),"%Y%m%d")>0~as.Date(as.character(!!x),"%Y%m%d"),
+                             is.na(!!x)~as.Date(as.character(!!sortida),"%Y%m%d"))) 
+  }
+  
+  if(class(dt[[x]])=="Date" & class(dt[[sortida]])=="numeric") {
+    
+    temp<-dt %>% select(!!dtindex,!!x,!!sortida) %>% 
+      mutate(
+        event=case_when(!!x>0~1,
+                        is.na(!!x)~0),
+        data_final=case_when(!!x>0~!!x,
+                             is.na(!!x)~as.Date(as.character(!!sortida),"%Y%m%d")))
+  }
+  
+  temp<- temp %>% mutate(temps=(data_final-dtindex) %>% as.numeric())
+  
+  # Genero l'objecte Surv
+  temp$event_surv<-Surv(temp$temps,temp$event)
+  
+  # Selecciono i renombro
+  nom_surv=paste0(event,".surv")
+  temp<-temp %>% select(event_surv) 
+  colnames(temp)=nom_surv
+  
+  temp
+}
+
+
+
+
 #  missing_to_level (Recodifica variable amb una categoria missing)  -------
 
 missings_to_level<-function(dades,variable="popes") {
