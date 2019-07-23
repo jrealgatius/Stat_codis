@@ -473,7 +473,7 @@ missings_to_level<-function(dades,variable="popes") {
 
 ###       incorpora variables a evaluar a=Llista de variables a avaluar     ###
 
-formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls") {
+formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls",codievent='1') {
   
   variables <- data.frame(readxl::read_excel(taulavariables))
   variables[is.na(variables)]<- 0
@@ -486,7 +486,7 @@ formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="
   
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Si'))")
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Yes'))")
-  resposta<-paste("Surv(",temps,", as.integer(",event,"=='1'))")
+  resposta<-paste0("Surv(",temps,", as.integer(",event,"=='",codievent,"'))")
   
   #
   if (cluster!="") kk<-paste(paste(llistataula,collapse=" + "),paste("cluster(",cluster,")",sep=""),sep="+")
@@ -501,9 +501,19 @@ formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="
   
 }
 
-#  Hadj retorna Ngran, Events, coef, HR, IC95, IC95, se.coef, p ---------
+#  Retorna Ngran, Events, coef, HR, IC95, IC95, se.coef, p ---------
 
-HRadj=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",c="",d=dadesDF,taulavariables="variables.xls") { 
+HRadj=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",c="",d=dadesDF,taulavariables="variables.xls",codievent='1') { 
+
+  # x="v.ajust"
+  # event="exitusCV"
+  # t="temps_seguiment"
+  # d=dades
+  # taulavariables = conductor_variables
+  # e=""
+  # c=""
+  # codievent='Si'
+  
   pepito<-paste("sum(d$",t,")",sep="")
   PT<-eval(parse(text=pepito))
   
@@ -511,7 +521,7 @@ HRadj=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",c="",d=
   if (c!="") posicio_p=6
   
   result=tryCatch({
-    pp<-coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables),data=d)    
+    pp<-coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables,codievent=codievent),data=d)    
     
     cbind(PT.Year=PT/365.25,
           N=pp$n,
@@ -532,9 +542,7 @@ HRadj=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",c="",d=
             IC951=NA,
             IC952=NA,
             se.coef=NA,
-            p=NA)}
-    
-  )
+            p=NA)})
   result
 }
 
