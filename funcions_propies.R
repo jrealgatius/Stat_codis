@@ -72,18 +72,20 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
   # taulavariables = conductor_variables
   # camp_descripcio="descripcio"
 
-  ####  Llegir etiquetes i variables a analitzar ####
+  #  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables)
   variables[is.na(variables)]<- 0
 
-  # selecciono els camps necessaris (camp i descripcio)
-  
+  # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
   camp_descripcio<-sym(camp_descripcio)
   
-  variables<-variables %>% select(camp,descripcio=!!camp_descripcio)
-
+  variables<-variables %>% select(camp,descripcio=!!camp_descripcio) 
+  
+  # Els que no tenen etiquet assignar el mateix nom del camp
+  variables<-variables %>% mutate(descripcio=ifelse(descripcio=="0",camp,descripcio)) 
+  
   #
-  ###################################   etiquetar variables         
+  # Etiquetar variables         
   seleccio<-variables
   camp<- as.vector(seleccio$camp) #
   descripcio<- as.vector(seleccio$descripcio) #
