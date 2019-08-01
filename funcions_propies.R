@@ -1425,11 +1425,10 @@ extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strat
   # formu<-formula.LOGIT(x="article.model",y="canvi312M.GLICADA.inputCAT2",taulavariables='variables_v2.xls')
   # dades=tempData
   
-  # formu=formu_text
+  # formu=formu
   # dades=dades
   # conditional=conditional
   # strata=strata
-  
   
   dades_resum<-as_tibble()
   
@@ -1503,7 +1502,7 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
 
 extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
   
-  # x="regicor_alone"
+  # x="regicor_mis"
   # y="event"
   # taulavariables=conductor_variables
   # dades=dades_temp
@@ -1513,6 +1512,8 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   # conditional = T
   # strata = "caseid"
   
+  # Ojo que variables no factoritzades --> error
+  
   formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
   formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
   
@@ -1520,13 +1521,12 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   fit<-stats::glm(formu, family = binomial, data=dades)
   
   if (conditional==F) {
-    taula_OR<-extreure_OR(formu=formu,dades,conditional=conditional,strata=strata)
+    taula_OR<-extreure_OR(formu=formu,dades=dades,conditional=conditional,strata=strata)
   } else {
     taula_OR<-extreure_OR(formu=formu_text,dades=dades,conditional=conditional,strata=strata)
     fit_c<-survival::clogit(as.formula(paste0(formu_text,"+ strata(",strata,")")),data=dades)
     
     }
-  
   
   taula_editada<-generar_taula_variables_formula(formu,dades) 
   
@@ -1763,10 +1763,12 @@ llistadetaules.compare<-function(tablero=c("taula1","taula2","taula3","taula4","
 
 Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.overall",Sig="No") {
 
-  # objecte_compare=T1.3
+  # objecte_compare=table3_art
   # metodo = "bonferroni"
+  # metodo = "BH"
+  # p="p.overall"
   # p="p.mul"
-  # Sig="Si"
+  # Sig="No"
   
   # 1. Extrect els p-valors 
   pvalors <- compareGroups::getResults(objecte_compare, p)
@@ -1777,7 +1779,7 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
   # 4. Ajusta p- valors 
   # pvals$Adjpvalor<-stats::p.adjust(pvalors, method = metodo)
 
-  pvals<-pvals[,1:ncol(pvalors)] %>% map_df(stats::p.adjust,method = metodo)
+  pvals<-pvals[,1:ncol(pvals)] %>% map_df(stats::p.adjust,method = metodo)
 
   # # 5. Punt de tall
   # pvals<-pvals %>% mutate_all(sigBH=ifelse(Adjpvalor<0.05,"Sig","NS"))
@@ -1787,7 +1789,7 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
     mutate_all(funs(ifelse(.<0.05,"Sig","NS")))
 
   # 3. Posa noms
-  pvals$variable<-row.names(pvalors)
+  pvals$variable<-names(pvalors)
   
   pvals %>% select(variable,starts_with('p'))
   
