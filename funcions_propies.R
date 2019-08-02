@@ -316,9 +316,24 @@ factoritzar.NO.YES<-function(dt=dadesDF,columna="factor",taulavariables="variabl
   dt[x]<-lapply(dt[x],function(y) factor(y,levels=c(0,1), labels=c("No","Yes")))
   dt
   
-  
-  
 }
+
+# factoritzar vector ------------
+# factoritzar una llista de variables donades unes dades i un vector de variables 
+
+factoritzar<-function(dt=dades,variables=c("grup","situacio")) {
+  
+  # dt=dades
+  # variables=c("grup","situacio","kk","sexe")
+
+  # Només si variable existeix la variable en dt
+  variables<-variables[variables %in% names(dades)]
+  
+  factoritzacio<-function(x) {if (!is.factor(x)) x<-as.factor(x) else x<-x}
+
+  dt<-dt %>% mutate_at(variables,factoritzacio)
+}
+
 
 #  Recodifico EN FUNCIÓ DE UN CAMP -------------------
 ### RETORNA DADES AMB RECODIFICACIÓ 
@@ -1420,17 +1435,18 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
 }
 
 #  Extreure OR (segons formula, i dades)  --------------------
-#       LLANÇO UNA FORMULA les dades per executar un model i retorno OR , CI95% i p-valor en una matriu
+#       LLANÇO UNA FORMULA les dades per executar un model i retorno OR , CI95% i p-valor en una tibble()
 
 extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strata="caseid") {
   
   # formu<-formula.LOGIT(x="article.model",y="canvi312M.GLICADA.inputCAT2",taulavariables='variables_v2.xls')
   # dades=tempData
   
-  # formu=formu
+  # formu=formula
   # dades=dades
-  # conditional=conditional
-  # strata=strata
+  # conditional=F
+  # strata="caseid"
+  modelcomplet=T
   
   dades_resum<-as_tibble()
   
@@ -1446,21 +1462,17 @@ extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strat
       formu<- paste0(formu,"+ strata(",strata,")")
       fit<-survival::clogit(as.formula(formu),data=dades)}
     
+  # Extrec info total del model 
     my_coefficients <- fit %>% coef 
     ci<-fit %>% confint 
-  
     OR<-my_coefficients %>% exp()
     OR_linf<-ci %>% exp()
     pvalors<-coef(summary(fit))[,'Pr(>|z|)']
-  
     coeficients<-cbind(OR,OR_linf,pvalors) %>% as_tibble
-  
     ret_val <- tibble::enframe(row.names(ci)) %>% bind_cols(coeficients)
-    
     colnames(ret_val) <- c("id","Categoria","OR","Linf", "Lsup", "p.value")
-  
     dades_resum<-ret_val %>% as_tibble
-  
+ 
   }
   
   dades_resum
