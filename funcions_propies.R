@@ -104,7 +104,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   
   # dt=dades
   # variables_factors=conductor_variables
-  # fulla="etiquetes"
+  # fulla="etiquetes_valors"
   # camp_etiqueta="etiqueta"
   
   # Llegir conductor#
@@ -121,6 +121,10 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   noms_variables<-names(pepe)
   num_vars<-length(noms_variables)
   
+  # Elimina espais en blanc de totes les variables factor / character (treu nivells) tot el data_frame
+  dt[sapply(dt,is.factor)] <- lapply(dt[sapply(dt,is.factor)], trimws)
+  dt[sapply(dt,is.character)] <- lapply(dt[sapply(dt,is.character)], trimws)
+  
   for (i in 1:num_vars) {
     
   # i<-1
@@ -128,14 +132,12 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   if (noms_variables[i] %in% colnames(dt)) {
     
     etiquetes_valors<-pepe[[i]] %>% pull(!!camp_etiqueta)
-    
     dt[noms_variables[i]]<-lapply(dt[noms_variables[i]],function(y) factor(y,levels=pepe[[i]]$valor,labels=etiquetes_valors))
-   }
+     }
   
   }
   
   dt
-  
   
   }
 #
