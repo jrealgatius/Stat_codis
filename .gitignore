@@ -6,11 +6,6 @@
 .Rhistory
 .Rapp.history
 
-# Fitxers de dades
-.RData
-.Ruserdata
-.RDS
-
 # Fitxers de dades en /data
 /data
 
