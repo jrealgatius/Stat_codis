@@ -2919,25 +2919,27 @@ plot.dispersio.reduccio <-function(dt=dades,v.basal="HBpreADD",v.final="HBpostAD
 
 #  Forest.plot --------------------
 
-#  A partir de taula amb OR's genera Forest Plot 
+# A partir de taula amb OR's / Betas genera Forest Plot 
+# La taula ha de contenir els seguents camps:Categoria,OR,Linf,Lsup 
 
-forest.plot<-function(dadesmodel=ramo,label=dadesmodel$Categoria,mean=dadesmodel$OR,lower=dadesmodel$Linf,upper=dadesmodel$Lsup) {
+forest.plot<-function(dadesmodel=ramo,label=dadesmodel$Categoria,mean=dadesmodel$OR,lower=dadesmodel$Linf,upper=dadesmodel$Lsup,label_X="OR (95% CI)", intercept=1) {
   
-  # dadesmodel=taula_editada
+  # dadesmodel=taula_coefs
   # label=taula_editada$Categoria
   # mean=taula_editada$OR
   # lower=taula_editada$Linf
   # upper=taula_editada$Lsup
-
-  dadesmodel<-dadesmodel %>% mutate(id=seq(1:length(label)))
+  # label_X="OR (95% CI)"
+  # intercept=1
+  
+  dadesmodel<-dadesmodel %>% mutate(id=seq(length(label),1))
 
   fp <- ggplot(data=dadesmodel,aes(x=dadesmodel$id, y=dadesmodel$OR, ymin=dadesmodel$Linf, ymax=dadesmodel$Lsup)) +
     geom_pointrange() + 
-    geom_hline(yintercept=1, lty=2) +  # add a dotted line at x=1 after flip
+    geom_hline(yintercept=intercept, lty=2) +  # add a dotted line at x=1 after flip
     coord_flip() +  # flip coordinates (puts labels on y axis)
-    xlab("Label") + ylab("OR (95% CI)") +
+    xlab("Label") + ylab(label_X) +
     scale_x_continuous(breaks=dadesmodel %>% pull(id) ,labels=dadesmodel %>% pull(Categoria))
-  
 
   fp
 }
