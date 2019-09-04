@@ -2030,13 +2030,15 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
 
 agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR_TER",bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="") {
   
-  # dt=PROBLEMES_total
   # bd.dindex="20161231"
-  # agregador =AGR_CAS
+
+  # bd.dindex=bd_dtindex
+  # dt=historic_problemes
+  # agregador ="prevalent"
   # dt.agregadors=CATALEG
   # finestra.dies=c(-Inf,0)
   # prefix=""
-  # camp_agregador="AGR_TER"
+  # camp_agregador="prevalent"
   
   ## afegir en dataindex de BDINDEX si bd.dindex<>""
   #### Afegir + data index (+dtindex) en l'historic de problemes
@@ -2045,11 +2047,21 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
   
   ## filtrar per intervals de dates 
   
-  # Convertir dates() a numeric
-  dt<-dt %>% mutate(
-    dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
-    dtindex=as.Date(as.character(dtindex),format="%Y%m%d") %>% as.numeric()) %>% 
-    as_tibble()
+  # # Convertir dates() a numeric
+  # dt<-dt %>% mutate(
+  #   dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
+  #   dtindex=as.Date(as.character(dtindex),format="%Y%m%d") %>% as.numeric()) %>% 
+  #   as_tibble()
+  
+  # Convertir dates a numeric si son numeriques
+  
+  if (class(dt$dat)=="Date") dt$dat_num=as.numeric(dt$dat)
+  if (class(dt$dtindex)=="Date") dt$dtindex_num=as.numeric(dt$dtindex)
+  
+  if (class(dt$dat)!="Date") dt$dat_num=as.Date(as.character(dt$dat),format="%Y%m%d") %>% as.numeric()
+  if (class(dt$dtindex)!="Date") dt$dtindex_num=as.Date(as.character(dt$dtindex),format="%Y%m%d") %>% as.numeric()
+  
+  
   
   ##### filtrar per intervals de dates 
   dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
