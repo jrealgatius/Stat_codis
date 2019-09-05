@@ -2033,12 +2033,12 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
   # bd.dindex="20161231"
 
   # bd.dindex=bd_dtindex
-  # dt=historic_problemes
+  # dt=PROBLEMES
   # agregador ="prevalent"
   # dt.agregadors=CATALEG
   # finestra.dies=c(-Inf,0)
   # prefix=""
-  # camp_agregador="prevalent"
+  # camp_agregador="exposed"
   
   ## afegir en dataindex de BDINDEX si bd.dindex<>""
   #### Afegir + data index (+dtindex) en l'historic de problemes
@@ -2062,17 +2062,9 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
   if (class(dt$dtindex)!="Date") dt$dtindex_num=as.Date(as.character(dt$dtindex),format="%Y%m%d") %>% as.numeric()
   
   
-  
   ##### filtrar per intervals de dates 
-  dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
-                             dat<= dtindex +finestra.dies[2])
-  
-  # dt<-dt %>% data.table() %>% 
-  #   dt[data.table::between(
-  #   lubridate::ymd(dat),
-  #   lubridate::ymd(dtindex)+finestra.dies[1],
-  #   lubridate::ymd(dtindex)+finestra.dies[2])]
-
+  dt<-dt %>% dplyr::filter(dat_num>= dtindex_num +finestra.dies[1] & 
+                             dat_num<= dtindex_num +finestra.dies[2])
   
   ## Filtrar CATALEG 
   camp_agregador_sym<-sym(camp_agregador)
