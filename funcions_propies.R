@@ -1779,7 +1779,7 @@ llistadetaules.compare<-function(tablero=c("taula1","taula2","taula3","taula4","
 
 Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.overall",Sig="No") {
 
-  # objecte_compare=table3_art
+  # objecte_compare=T1.3
   # metodo = "bonferroni"
   # metodo = "BH"
   # p="p.overall"
@@ -1805,7 +1805,7 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
     mutate_all(funs(ifelse(.<0.05,"Sig","NS")))
 
   # 3. Posa noms
-  pvals$variable<-names(pvalors)
+  pvals$variable<-rownames(pvalors)
   
   pvals %>% select(variable,starts_with('p'))
   
