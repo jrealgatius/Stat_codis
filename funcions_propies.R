@@ -746,16 +746,10 @@ variables.ajust=function(x="taula1",variables=variables) {
 extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavariables="variables_R.xls"){
   
   # dt=dades
-  # outcomes = "lipos"
-  # x="Prediabetes"
-  # taulavariables ="VARIABLES.xls"
-  # z=""
-  
-  # dt=dades
-  # outcomes="lipos2"
-  # x="HbA1c"
-  # z="age.sex.ajust"
-  # taulavariables="VARIABLES.xls"
+  # outcomes="lipos"
+  # x="MCD"
+  # z="variables_ajust"
+  # taulavariables=conductor_variables
   
   # Número de categories de X
   Ncat.x<-sum(table(dt[x])!=0)
@@ -779,7 +773,6 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
     rownames %>% tail(1)
 
   # names(table(dt[x]))[2:Ncat.x]
-
   if (Ncat.x==1) models1_oft<-models1_oft %>%                       # Si es continua només un coef de X
     purrr::map(tail,Ncat.x) %>% 
     purrr::map_dfr(data.table)
@@ -788,7 +781,6 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
     purrr::map(tail,Ncat.x-1) %>% 
     purrr::map_dfr(data.table)
 
-    
   if (Ncat.x>1) variables<-names(selectorvariables(outcomes,taulavariables,dt=dt)) %>%  ##  Noms dels outcomes 
     rep(each=Ncat.x-1) %>%                                                ##  Cada Num de coeficients   
     data.table()      # Outcomes 
