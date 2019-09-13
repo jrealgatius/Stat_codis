@@ -1086,6 +1086,11 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
   
   # if (Nmostra==Inf) Nmostra=10
   
+  # Si Nmostra es infinit o mes gran que la mostra agafo el màxim
+  Nmostra_maxim<- dt %>% distinct(idp) %>% nrow()
+  if (Nmostra==Inf | Nmostra>Nmostra_maxim) Nmostra<- Nmostra_maxim
+  
+  
   farmacs_list<-dt %>%distinct(agr)%>%dplyr::pull()
   
   dt<-dt%>% mutate(agr=factor(agr))
