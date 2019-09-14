@@ -1061,7 +1061,6 @@ MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp
 
   # Gráfico el tema
   ggplot(dades,aes(x =dia0,y =!!id, color=!!grup_color,group=!!grup_linea,linetype=!!grup_linea))+
-
     geom_segment(aes(x =dia0, xend=diaf, y =!!id, yend = !!id),arrow = arrow(length = unit(0.03, "npc"))) +
     geom_point(aes(dia0, !!id)) + 
     geom_text(vjust = -0.5, hjust=0, size = 3,aes(x =dia0, y = !!id,label = paste(round(days_duration, 2), "days")))+
@@ -1069,9 +1068,6 @@ MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp
     xlim(porca1,porca2)+
     theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
 
-  
-  
-  
 }
 
 # Retorna llista amb dos data_frames de farmacs i dos plots pre i post 
@@ -1164,6 +1160,75 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
 }
 # 
 
+# Historic de farmacs: idp, datinici,datafi, gap
+# Elimina solapaments i discontinuitats petites i retorna dades sense discontinuitats ni solapaments amb igual o menys registres
+# Retorna dades amb : id, datainici i datafi amb menys registres, havent eliminat solapaments i gaps (discontinuitat petita)
+
+agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal="datafi",gap=5){
+  
+  # dt=dades_test
+  # gap=10
+  # datainici="data2"
+  # datafinal="datafi2"
+  # id="idp"
+  
+  # Conversió a Sym per evaluació  
+  datainici_sym<-rlang::sym(datainici)
+  datafinal_sym<-rlang::sym(datafinal)
+  idp_sym=rlang::sym(id)
+  
+  # Seleccionar dades necessaries amb noms sense sym
+  dt<-dt %>% select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)
+  
+  # MAP_ggplot(dades=dt,datainicial="data",datafinal="datafi",id="idp",grup_color=NA,grup_linea=NA)
+  dt<-dt %>% 
+    arrange(idp,data,datafi) %>% 
+    group_by(idp) %>% mutate(gap1=(data-lag(datafi))) %>% 
+    mutate(gap2=case_when(gap1 > gap ~1, TRUE ~0)) %>% 
+    group_by(idp) %>% 
+    mutate(gap3=(cumsum(gap2)))%>%ungroup()
+  
+  # Agregate 
+  dt2<-dt %>%  mutate (idp2=idp) %>% 
+    select(idp,data,datafi,gap3,idp,idp2) %>%
+    group_by(idp,gap3)%>%
+    summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>% 
+    ungroup() 
+  
+  # MAP_ggplot(dades=dt2,datainicial="data",datafinal="datafi",id="idp")
+  dt2<-dt2 %>% select("idp","datainici","datafi") 
+  
+  # Renombro noms dels camps originals
+  colnames(dt2)<-c(idp_sym,datainici_sym,datafinal_sym)
+  
+  dt2
+  
+}
+
+# Dibuixa mapa temporal univariant per verificar solapaments
+MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp") {
+  
+  # dades=dades_test
+  # datainicial="data"
+  # datafinal="datafi"
+  # id="idp"
+  
+  # Conversió a Sym per evaluació  
+  datainicial<-rlang::sym(datainicial)
+  datafinal<-rlang::sym(datafinal)
+  id<-rlang::sym(id)
+  
+  # Calculo dies de duració  
+  dades<-dades %>%  mutate(dia0=!!datainicial,diaf=!!datafinal,days_duration=diaf-dia0)
+  
+  # Gráfico el tema
+  ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id))+
+    ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id, yend = !!id),arrow =  ggplot2::arrow(length = ggplot2::unit(0.03, "npc"))) +
+    ggplot2::geom_point(ggplot2::aes(dia0, !!id)) + 
+    ggplot2::geom_text(vjust = -0.5, hjust=0, size = 3, ggplot2::aes(x =dia0, y = !!id,label = paste(round(days_duration, 2), "days")))+
+    ggplot2::scale_colour_brewer(palette = "Set1")+
+    ggplot2::theme(legend.position="top",legend.background =  ggplot2::element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
+}
 
 
 
