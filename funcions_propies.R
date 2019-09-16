@@ -1166,10 +1166,10 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
 
 agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal="datafi",gap=5){
   
-  # dt=dades_test
-  # gap=10
-  # datainici="data2"
-  # datafinal="datafi2"
+  # dt=FX.FACTURATS_PRESCRITS_GRUPS
+  # gap=160
+  # datainici="dat"
+  # datafinal="datafi"
   # id="idp"
   
   # Conversió a Sym per evaluació  
@@ -1195,8 +1195,16 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
     summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>% 
     ungroup() 
   
-  # MAP_ggplot(dades=dt2,datainicial="data",datafinal="datafi",id="idp")
   dt2<-dt2 %>% select("idp","datainici","datafi") 
+
+  # Eliminar solapaments complets si data inici es previa a data inici anterior
+  dt2<-dt2 %>% group_by(idp) %>% 
+    mutate(eliminar=ifelse(datafi<lag(datafi),1,0)) %>% 
+    ungroup() %>% 
+    filter(eliminar!=1 | is.na(eliminar)) %>% 
+    select(-eliminar)
+
+  # MAP_ggplot(dades= dt2 %>% head(10),datainicial="datainici",datafinal="datafi",id=id)
   
   # Renombro noms dels camps originals
   colnames(dt2)<-c(idp_sym,datainici_sym,datafinal_sym)
@@ -1206,26 +1214,33 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 }
 
 # Dibuixa mapa temporal univariant per verificar solapaments
-MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp") {
+MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf) {
   
-  # dades=dades_test
-  # datainicial="data"
+  # dades=FX.FACTURATS_PRESCRITS_GRUPS
+  # datainicial="dat"
   # datafinal="datafi"
   # id="idp"
+  # Nmostra=10
   
   # Conversió a Sym per evaluació  
   datainicial<-rlang::sym(datainicial)
   datafinal<-rlang::sym(datafinal)
-  id<-rlang::sym(id)
+  id_sym<-rlang::sym(id)
+  
+  # mostrejo
+  dades<-mostreig_ids(dt=dades,id=id,n_mostra = Nmostra)
+  
+  # if (Nmostra!=Inf) id_sample<-dades %>% distinct(!!id) %>% sample_n(size=Nmostra)
+  # dt<-id_sample %>% left_join(dt,by=quo_name(id)) # 
   
   # Calculo dies de duració  
   dades<-dades %>%  mutate(dia0=!!datainicial,diaf=!!datafinal,days_duration=diaf-dia0)
   
   # Gráfico el tema
-  ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id))+
-    ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id, yend = !!id),arrow =  ggplot2::arrow(length = ggplot2::unit(0.03, "npc"))) +
-    ggplot2::geom_point(ggplot2::aes(dia0, !!id)) + 
-    ggplot2::geom_text(vjust = -0.5, hjust=0, size = 3, ggplot2::aes(x =dia0, y = !!id,label = paste(round(days_duration, 2), "days")))+
+  ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id_sym))+
+    ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id_sym, yend = !!id_sym),arrow =  ggplot2::arrow(length = ggplot2::unit(0.03, "npc"))) +
+    ggplot2::geom_point(ggplot2::aes(dia0, !!id_sym)) + 
+    ggplot2::geom_text(vjust = -0.5, hjust=0, size = 3, ggplot2::aes(x =dia0, y = !!id_sym,label = paste(round(days_duration, 2), "days")))+
     ggplot2::scale_colour_brewer(palette = "Set1")+
     ggplot2::theme(legend.position="top",legend.background =  ggplot2::element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
 }
@@ -1282,7 +1297,6 @@ MAP_punts_ggplot<-function(
   set.seed(llavor) # S'ha d'actualitzar
   # 
   id_sample<-dt %>% distinct(!!id) %>% sample_n(size=Nmostra)
-
   dt<-id_sample %>% left_join(dt,by=quo_name(id)) # 
   
   
@@ -2036,7 +2050,6 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
   ## filtrar per intervals de dates 
 
   # Convertir dates a numeric
-  
   if (class(dt$dat)=="Date") dt$dat_num=as.numeric(dt$dat)
   if (class(dt$dtindex)=="Date") dt$dtindex_num=as.numeric(dt$dtindex)
   
@@ -4024,10 +4037,18 @@ comptar_valors<-function(dt=dadesevents,variables=c("EV.TER.ARTER_PERIF","EV.TER
 mostreig_ids<-function(dt,id="idp",n_mostra=100) {
   
   # n_mostra<-100
-  # dt<-FX.FACTURATS_PRESCRITS 
+  # dt<-dades
+  # id="idp"
+  
+  if (n_mostra!=Inf) { 
+  
   id_sym<-sym(id)
   id_sample<-dt %>% distinct(!!id_sym) %>%sample_n(size=n_mostra) 
   dt<-id_sample %>% left_join(dt,by=id) 
+  
+  } else { dt<-dt}
+  
+  dt
   
 }
 
