@@ -1958,11 +1958,11 @@ afegir_dataindex<-function(dt_historic,bd.dindex="20161231") {
 
 agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=c(-Inf,Inf),sufix = c(".valor", ".dies")){
   
-  # bd.dindex =bdades_index
-  # finestra.dies=c(-1095,-366)
-  # sufix = c(".valor13a", ".dies13a")
-  # dt<-VARIABLES %>% head(10000)
-
+  # dt =dt_variables
+  # bd.dindex ="20070101"
+  # finestra.dies=c(-Inf,0)
+  # sufix = c(".valor", ".dies")
+  
   #### Afegir + data index (+dtindex) en l'historic de variables
   
   print("Afegint dt.index")
@@ -1972,9 +1972,11 @@ agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=
   # Convertir dates a numeric
   print ("Convertir dates a numeric")
   
-  dt<-dt %>% mutate(dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
-                    dtindex=dtindex %>% as.numeric())
-  
+  if (class(dt$dat)!="Date") dt$dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric()
+  if (class(dt$dat)=="Date") dt$dat=as.numeric(dt$dat)
+
+  if (class(dt$dtindex)!="Date") dt$dtindex=as.Date(as.character(dt$dtindex),format="%Y%m%d") %>% as.numeric()
+  if (class(dt$dtindex)=="Date") dt$dtindex=as.numeric(dt$dtindex)
   ##### filtrar per intervals de dates 
 
   print("Filtrant dates")
