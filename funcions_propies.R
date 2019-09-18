@@ -1167,7 +1167,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
 agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal="datafi",gap=5){
   
   # dt=FX.FACTURATS_PRESCRITS_GRUPS
-  # gap=160
+  # gap=60
   # datainici="dat"
   # datafinal="datafi"
   # id="idp"
@@ -1180,35 +1180,41 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
   # Seleccionar dades necessaries amb noms sense sym
   dt<-dt %>% select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)
   
+  
+  # 1. Eliminar solapaments 
+  dt<-dt %>% 
+    group_by(idp) %>% 
+    arrange(data) %>% 
+    mutate(indx = c(0, cumsum(as.numeric(lead(data)) >
+                                cummax(as.numeric(datafi)))[-n()])) %>%
+    group_by(idp, indx) %>%
+    summarise(data = min(data), datafi = max(datafi)) %>%
+    select(-indx) 
+  
+  
+  # 2. ELiminar Gaps (discontinuitats)
+  
   # MAP_ggplot(dades=dt,datainicial="data",datafinal="datafi",id="idp",grup_color=NA,grup_linea=NA)
   dt<-dt %>% 
-    arrange(idp,data,datafi) %>% 
-    group_by(idp) %>% mutate(gap1=(data-lag(datafi))) %>% 
-    mutate(gap2=case_when(gap1 > gap ~1, TRUE ~0)) %>% 
-    group_by(idp) %>% 
-    mutate(gap3=(cumsum(gap2)))%>%ungroup()
-  
-  # Agregate 
-  dt2<-dt %>%  mutate (idp2=idp) %>% 
+    mutate(gap1=(data-lag(datafi))) %>%
+    mutate(gap2=case_when(gap1 > gap ~1, TRUE ~0)) %>%
+    mutate(gap3=(cumsum(gap2))) %>% 
+    ungroup()
+
+  # 3. Agregate per idp-gap
+  dt2<-dt %>%  mutate (idp2=idp) %>%
     select(idp,data,datafi,gap3,idp,idp2) %>%
     group_by(idp,gap3)%>%
-    summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>% 
-    ungroup() 
-  
-  dt2<-dt2 %>% select("idp","datainici","datafi") 
+    summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>%
+    ungroup()
 
-  # Eliminar solapaments complets si data inici es previa a data inici anterior
-  dt2<-dt2 %>% group_by(idp) %>% 
-    mutate(eliminar=ifelse(datafi<lag(datafi),1,0)) %>% 
-    ungroup() %>% 
-    filter(eliminar!=1 | is.na(eliminar)) %>% 
-    select(-eliminar)
+  dt2<-dt2 %>% select("idp","datainici","datafi")
 
   # MAP_ggplot(dades= dt2 %>% head(10),datainicial="datainici",datafinal="datafi",id=id)
-  
+
   # Renombro noms dels camps originals
   colnames(dt2)<-c(idp_sym,datainici_sym,datafinal_sym)
-  
+
   dt2
   
 }
@@ -1216,11 +1222,11 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 # Dibuixa mapa temporal univariant per verificar solapaments
 MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf) {
   
-  # dades=FX.FACTURATS_PRESCRITS_GRUPS
+  # dades=farmacs_dt_sense_gaps %>% filter(GRUP=="IDPP4")
   # datainicial="dat"
   # datafinal="datafi"
   # id="idp"
-  # Nmostra=10
+  # Nmostra=2
   
   # Conversió a Sym per evaluació  
   datainicial<-rlang::sym(datainicial)
