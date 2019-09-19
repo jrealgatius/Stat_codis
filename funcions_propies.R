@@ -1618,7 +1618,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
   
   resposta<-all.vars(formu)[1]
-  # fit<-stats::glm(formu, family = binomial, data=dades)
+  fit<-stats::glm(formu, family = binomial, data=dades)
   
   if (conditional==F) {
     taula_OR<-extreure_OR(formu=formu,dades=dades,conditional=conditional,strata=strata)
