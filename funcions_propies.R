@@ -916,10 +916,10 @@ plotKM=function(y=exitus.surv,grup=grup,d=dades,caption="",llegenda=c("No","Yes"
   # caption=Hmisc::label(dadesDF$hta)
   # llegenda=c("No","Yes")
   
-  y=dadesDF$exitus_surv
-  grup=dadesDF$edad_cat6
-  d=dadesDF
-  llegenda=c("<45", "[45-55)", "[55-65)", "[65-75)", "[75-85)","85+")
+  # y=dadesDF$exitus_surv
+  # grup=dadesDF$edad_cat6
+  # d=dadesDF
+  # llegenda=c("<45", "[45-55)", "[55-65)", "[65-75)", "[75-85)","85+")
 
   # Basic survival curves
   p <- survminer::ggsurvplot(survfit(y ~ grup, data = d), data = d,
@@ -1585,6 +1585,9 @@ extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strat
 # Taula variables segons formula i dades genera la taula de coeficients  
 generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) {
   
+  # formu=formu
+  # dt=dades
+  
   taula_editada<-
     all.vars(formu)[-1] %>% 
     map(~paste0(.x,levels(dades[[.x]]),"/",.x)) %>% 
@@ -1600,23 +1603,22 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
 
 extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
   
-  # x="regicor_mis"
-  # y="event"
+  # x="grup"
+  # y="HBA1C.dif324m.cat"
   # taulavariables=conductor_variables
-  # dades=dades_temp
+  # dades=dades
   # elimina=c("IDP")
   # a=""
-  # valor_outcome=1
-  # conditional = T
+  # valor_outcome="Yes"
+  # conditional = F
   # strata = "caseid"
   
   # Ojo que variables no factoritzades --> error
-  
   formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
   formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
   
   resposta<-all.vars(formu)[1]
-  fit<-stats::glm(formu, family = binomial, data=dades)
+  # fit<-stats::glm(formu, family = binomial, data=dades)
   
   if (conditional==F) {
     taula_OR<-extreure_OR(formu=formu,dades=dades,conditional=conditional,strata=strata)
