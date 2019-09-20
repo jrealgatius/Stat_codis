@@ -268,7 +268,8 @@ selectorvariables=function(taula="table1",taulavariables="variables_R.xls",dt=da
   # Elimino les que no existeixen
   vector_variables<-vector_variables[is.element(vector_variables,names(dt))]
   moco<-dt %>% dplyr::select_at(vector_variables)
-  print(paste0("Llista de variables que no existeixen en el dataset:",paste0(variables.no.existeixen ,collapse = ", ")))
+  
+  message(paste0("Llista de variables que no existeixen en el dataset:",paste0(variables.no.existeixen ,collapse = ", ")))
   
   moco
   
