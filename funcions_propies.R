@@ -191,12 +191,13 @@ formula=function(x="taula1",y="grup",eliminar=c("idp",y)) {
 # Te en compte l'Ordre que està posada en el conductor taulavariables
 #
 #
-formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="variables_R.xls") {
+formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="variables_R.xls", dt="No") {
   
-  # x="T1_GSK"
-  # y="."
-  # taulavariables ="VARIABLES.xls"
+  # x="table5"
+  # y="grup"
+  # taulavariables =conductor_variables
   # elimina=c("IDP")
+  # dt=dades
   
   # 1. Llegir conductor analisis 
   
@@ -212,7 +213,10 @@ formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="va
     dplyr::filter(!!x>0) %>% 
     dplyr::arrange(!!x) %>% 
     dplyr::select(camp) %>% as.vector()
+
+  # 1.2. Filtrar per variables que realment existeixen en la base de dades
   
+  if (is.data.frame(dt)) {mua<-mua %>% semi_join(data.frame(camp=names(dades)),by="camp")}
 
   # 3. Generar formula
   
