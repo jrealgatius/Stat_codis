@@ -4131,7 +4131,7 @@ regicor <- function(age, sex, smoker, diabetes, coltot, colhdl, sbp, dbp, divide
   result
 }
 
-
+#30.Setembre.2019#
 
 
 #      FI GENERAR FUNCIONs  
