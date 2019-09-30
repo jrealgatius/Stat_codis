@@ -4025,6 +4025,18 @@ netejar.noms.variables<-function(dt=LIPOS_EORTEGA){
 }
 
 
+
+
+# Funció que elimina accents dels noms de les variables
+netejar.accents.variables <- function(dt=LIPOS_EORTEGA){
+  paco<-names(dt) %>%
+    iconv(to="ASCII//TRANSLIT")
+  names(dt)<-paco
+  dt
+}
+
+
+
 #  Comptar_valors(dt, vector_variables, valor)  ##################
 # en funció de vector de variables, i un valor("Yes")
 
