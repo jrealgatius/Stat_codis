@@ -79,7 +79,7 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
   # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
   camp_descripcio<-sym(camp_descripcio)
   
-  variables<-variables %>% select(camp,descripcio=!!camp_descripcio) 
+  variables<-variables %>% dplyr::select(camp,descripcio=!!camp_descripcio) 
   
   # Els que no tenen etiquet assignar el mateix nom del camp
   variables<-variables %>% mutate(descripcio=ifelse(descripcio=="0",camp,descripcio)) 
@@ -114,7 +114,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   # Split
   camp_etiqueta<-sym(camp_etiqueta)
   
-  k<-variables_factors%>%select(camp, valor,!!camp_etiqueta)
+  k<-variables_factors%>%dplyr::select(camp, valor,!!camp_etiqueta)
   pepe<-k %>% base::split(list(.$camp))
 
   #
@@ -166,9 +166,9 @@ etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="varia
   camp_eval<-sym(camp)
   camp_descripcio_eval<-sym(camp_descripcio)
   # Canviar el format de la taula 
-  taula<-taula %>% left_join(select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
+  taula<-taula %>% left_join(dplyr::select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
     mutate(!!camp_eval:=descripcio) %>% 
-    select(-descripcio)
+    dplyr::select(-descripcio)
  
 }
 
@@ -403,7 +403,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
     
     
     colnames(dt)[colnames(dt)=="popes"] <- nomrecode
-    dt<-dt %>% select(-camp)
+    dt<-dt %>% dplyr::select(-camp)
   
     print(paste0("Generada: ",nomrecode))
   
@@ -427,7 +427,7 @@ generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
   
   if(class(dt[[x]])!="Date" & class(dt[[sortida]])!="Date") {
     
-    temp<-dt %>% select(!!dtindex,!!x,!!sortida) %>% 
+    temp<-dt %>% dplyr::select(!!dtindex,!!x,!!sortida) %>% 
       mutate(
         event=case_when(as.Date(as.character(!!x),"%Y%m%d")>0~1,
                         is.na(!!x)~0),
@@ -437,7 +437,7 @@ generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
   
   if(class(dt[[x]])=="Date" & class(dt[[sortida]])=="numeric") {
     
-    temp<-dt %>% select(!!dtindex,!!x,!!sortida) %>% 
+    temp<-dt %>% dplyr::select(!!dtindex,!!x,!!sortida) %>% 
       mutate(
         event=case_when(!!x>0~1,
                         is.na(!!x)~0),
@@ -452,7 +452,7 @@ generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
   
   # Selecciono i renombro
   nom_surv=paste0(event,".surv")
-  temp<-temp %>% select(event_surv) 
+  temp<-temp %>% dplyr::select(event_surv) 
   colnames(temp)=nom_surv
   
   temp
@@ -798,7 +798,7 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
   
   models_taula<-cbind(variables,Cat.X=noms_var_X,models1_oft) 
   
-  models_taula<-models_taula %>% select(-c("t value"))    ## Elimino t value
+  models_taula<-models_taula %>% dplyr::select(-c("t value"))    ## Elimino t value
   
   list(coef=models_taula,caption=paste("Coeficient ajustat per:", x))
   
@@ -1098,7 +1098,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
   set.seed(llavor) # S'ha d'actualitzar 
   id_sample<-dt %>% distinct(idp) %>%sample_n(size=Nmostra) 
   dt<-id_sample %>% left_join(dt,by="idp") 
-  dt<-dt%>%select(idp,agr,data=dat,datafi,FACTPRESC=tipus)   
+  dt<-dt%>%dplyr::select(idp,agr,data=dat,datafi,FACTPRESC=tipus)   
   
   # Calculo dies de duració  
   dt<-dt %>% 
@@ -1109,7 +1109,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
   
   dt<-dt %>% mutate (idp2=idp, idp=paste0(idp,agr,".",str_sub(FACTPRESC,1,1)))
   
-  dt<-dt%>%select(idp,agr,data,datafi,days_duration,idp2,FACTPRESC)  
+  dt<-dt%>%dplyr::select(idp,agr,data,datafi,days_duration,idp2,FACTPRESC)  
   # Genera mapa origen (n) 
   
   dt<-dt %>% mutate (idp_temp=paste0(stringr::str_sub(dt$idp,1,6),agr,".",str_sub(FACTPRESC,1,1)))
@@ -1136,7 +1136,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
   
   # Agregate 
   dt2<-dt %>% 
-    select(idp,data,datafi,gap3,agr,idp2, FACTPRESC) %>%
+    dplyr::select(idp,data,datafi,gap3,agr,idp2, FACTPRESC) %>%
     group_by(idp,agr,gap3)%>%
     summarise(data= min(data), datafi= max(datafi),idp2=min(idp2),FACTPRESC=min(FACTPRESC))%>% 
     ungroup
@@ -1155,7 +1155,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
   
   #MAP2
   
-  dt2<-dt2 %>% select(idp2,idp,agr,data,datafi,FACTPRESC)
+  dt2<-dt2 %>% dplyr::select(idp2,idp,agr,data,datafi,FACTPRESC)
   
   #dt2
   
@@ -1183,7 +1183,7 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
   idp_sym=rlang::sym(id)
   
   # Seleccionar dades necessaries amb noms sense sym
-  dt<-dt %>% select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)
+  dt<-dt %>% dplyr::select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)
   
   
   # 1. Eliminar solapaments 
@@ -1194,7 +1194,7 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
                                 cummax(as.numeric(datafi)))[-n()])) %>%
     group_by(idp, indx) %>%
     summarise(data = min(data), datafi = max(datafi)) %>%
-    select(-indx) 
+    dplyr::select(-indx) 
   
   
   # 2. ELiminar Gaps (discontinuitats)
@@ -1208,12 +1208,12 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 
   # 3. Agregate per idp-gap
   dt2<-dt %>%  mutate (idp2=idp) %>%
-    select(idp,data,datafi,gap3,idp,idp2) %>%
+    dplyr::select(idp,data,datafi,gap3,idp,idp2) %>%
     group_by(idp,gap3)%>%
     summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>%
     ungroup()
 
-  dt2<-dt2 %>% select("idp","datainici","datafi")
+  dt2<-dt2 %>% dplyr::select("idp","datainici","datafi")
 
   # MAP_ggplot(dades= dt2 %>% head(10),datainicial="datainici",datafinal="datafi",id=id)
 
@@ -1579,7 +1579,7 @@ extreure_OR<- function (formu="AnyPlaqueBasal~CD5L",dades=dt,conditional=F,strat
     dades_resum<-ret_val %>% mutate(OR=estimate %>% exp,
                        Linf=(estimate-std.error) %>% exp,
                        Lsup=(estimate+std.error) %>% exp) %>% 
-      select(categoria,OR,Linf,Lsup,p.value)
+      dplyr::select(categoria,OR,Linf,Lsup,p.value)
     }
   
   dades_resum
@@ -1646,7 +1646,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
     filter (!is.na(id)) %>% # Eliminar cat de referencia
     etiquetar_taula("Variable",taulavariables,"descripcio") %>% 
     mutate(Variable=if_else(tipo=="Cat",paste0(Variable,":",nivell),Variable)) %>% 
-    select(Categoria=Variable,OR,Linf,Lsup,p.value)
+    dplyr::select(Categoria=Variable,OR,Linf,Lsup,p.value)
  
   forest_plot<-forest.plot(taula_editada)
   
@@ -1661,7 +1661,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
       mutate(prob_pred=boot::inv.logit(logit_pred))
     
     dades_prediccio<-dades_prediccio %>% 
-      cbind(predict_clogit) %>% select(-prediccio) %>% rename(prediccio=prob_pred)
+      cbind(predict_clogit) %>% dplyr::select(-prediccio) %>% rename(prediccio=prob_pred)
     }
   
   g <- pROC::roc(event ~ prediccio, data = dades_prediccio)
@@ -1897,7 +1897,7 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
   pvals$variable<-rownames(pvalors)
   if (is.null(rownames(pvalors))) pvals$variable<-names(pvalors)
   
-  pvals %>% select(variable,starts_with('p'))
+  pvals %>% dplyr::select(variable,starts_with('p'))
   
   # # 6. Canviar noms
   # pvals<-pvals %>% setNames(c("P.crude","Variable",paste0("Padj.",substr(metodo, 1,3)), paste0("Sig.",substr(metodo, 1,3))))
@@ -2085,7 +2085,7 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
   camp_agregador_sym<-sym(camp_agregador)
   
   dt.agregadors<-dt.agregadors %>% 
-    select(cod,agr=!!camp_agregador_sym) %>% 
+    dplyr::select(cod,agr=!!camp_agregador_sym) %>% 
     filter(!is.na(agr))
 
   ## Capturar agregador 
@@ -2161,7 +2161,7 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
   camp_agregador_sym<-sym(camp_agregador)
   
   dt.agregadors<-dt.agregadors %>% 
-    select(cod,agr=!!camp_agregador_sym) %>% 
+    dplyr::select(cod,agr=!!camp_agregador_sym) %>% 
     filter(agr==agregador)
 
   ## Capturar agregador 
@@ -2289,7 +2289,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   
   agregador_sym<-sym(camp_agregador)
   ## Filtrar CATALEG per agrupador per camp_agregador
-  dt.agregadors<-dt.agregadors %>% select(cod,agr=!!agregador_sym)
+  dt.agregadors<-dt.agregadors %>% dplyr::select(cod,agr=!!agregador_sym)
   dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
   
   # filtrar dt farmacs només per agregadors d'interes (camp_agregador)
@@ -2430,10 +2430,10 @@ agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0))
   visites[is.na(paco)]<-0
   
   ###  Computo visites globals
-  paco<-paco %>% select(idp,dtindex)  # Separo id de visites 
+  paco<-paco %>% dplyr::select(idp,dtindex)  # Separo id de visites 
   
   visites<-visites %>%        #  Sumo totes les visites
-    select(starts_with("visites")) %>% 
+    dplyr::select(starts_with("visites")) %>% 
     mutate(visites_TOT=rowSums(.) )
   
   paco<-paco %>% cbind(visites) %>% as_tibble()
@@ -2511,7 +2511,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
   # variables<-variables %>% select_if(names(.)%in%c("camp",criteris,etiquetes,ordre)) select_if no funciona
-  variables<-variables %>% select(c("camp",criteris,etiquetes,ordre))
+  variables<-variables %>% dplyr::select(c("camp",criteris,etiquetes,ordre))
   
   ##  Elimino els espais en blanc de les variables factor
   dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) %>% as.data.table()
@@ -2523,7 +2523,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   if (is.na(grups)) {dt<-dt %>% mutate(grup="constant")}  
   if (is.na(grups)) {grups="grup"}
   
-  datatemp<-dt %>% select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
+  datatemp<-dt %>% dplyr::select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
   
   # Genero filtres
   maco_noms<-variables["camp"]
@@ -2537,7 +2537,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   
   maco_miss<-variables %>% 
     dplyr::select_("camp") %>%
-    dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% select(filtres)
+    dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select(filtres)
 
   maco_miss<-maco_noms %>% cbind(maco_miss) %>% mutate(tipus_cri="missing")
   
@@ -2575,7 +2575,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   taula_criteris<-taula_criteris %>% 
     left_join(temp,by=c("camp","filtre_tipus")) %>% 
     filter(suma_n!=0) %>% 
-    select(-suma_n) %>% 
+    dplyr::select(-suma_n) %>% 
     mutate (n=ifelse(is.na(n),0,n))
   
 
@@ -2613,8 +2613,8 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   
   # Generar N per cada grup Inicial i Final x grup 
   
-  pob.i<-dt %>% group_by(grup) %>% summarise (n=n()) %>% select(n) %>% as.vector
-  pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% select(n) %>% as.vector
+  pob.i<-dt %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
 
   n_pob1<-c(pob.i$n[1],pob.f$n[1])
   n_pob2<-c(pob.i$n[2],pob.f$n[2])
@@ -3177,7 +3177,7 @@ dt_index_data_random<-function(dt=PACIENTS) {
   # Fusiono amb idp i selecciono POTENCIALS CONTROLS dins de periode de seguiment
 
   BD_PAC_DINDEX<-dt %>% 
-    select(idp,dtsortida) %>%             
+    dplyr::select(idp,dtsortida) %>%             
     cbind(data_index_data) %>%                                # Fusiono dates random
     filter(dtindex.random<=lubridate::ymd(dtsortida)) %>%     # Filtro només aquells que dins de la data de seguiment
     select (idp,dtindex.random) %>% 
@@ -3205,25 +3205,25 @@ dt_index_data_semirandom<-function(dt=PACIENTS,dt.variables=VARIABLES,codi="EK20
   UN.COLESTEROL<-dt.variables %>%               
     filter(cod==codi) %>%                       # selecciono colesterols (Validar que es EK201)
     dplyr::left_join(dt,by="idp") %>%           # Junto pacients 
-    select(idp,cod,dat,dtsortida) %>%           # Selecciono camps necessaris
+    dplyr::select(idp,cod,dat,dtsortida) %>%           # Selecciono camps necessaris
     filter(!is.na(dtsortida)) %>%               # Filtro només pacients (amb dtsortida)
     filter (dat>=20100101 & dat<=dtsortida) %>%  # filtro Dates dins periode de seguiment 
     group_by(idp) %>%                           # Agafo un colesterol per cada idp
     sample_n(size = 1) %>%                      # Random
     ungroup %>% 
-    select(idp, dat) %>% 
+    dplyr::select(idp, dat) %>% 
     rename(dat_col=dat) 
   
   ### Per cada pacient selecciono una dat random entre totes les VARIABLES 
   UNA.VARIABLE<-dt.variables %>%                # totes les variables  
     dplyr::left_join(dt,by="idp") %>%           # Junto pacients 
-    select(idp,dat,dtsortida) %>%               # Selecciono camps necessaris
+    dplyr::select(idp,dat,dtsortida) %>%               # Selecciono camps necessaris
     filter(!is.na(dtsortida)) %>%               # Filtro només pacients amb dtsortida 
     filter (dat>=20100101 & dat<=dtsortida) %>% # Dates possibles dins el seguiment
     group_by(idp) %>%                           # Agafo unA fila per cada idp
     sample_n(size = 1) %>%                      # RAndom
     ungroup() %>% 
-    select(idp, dat) %>% 
+    dplyr::select(idp, dat) %>% 
     rename(dat_var=dat)
   
   ### Fusió d'ambdos fitxers i selecciono una d'elles preferentment colesterol
@@ -3231,7 +3231,7 @@ dt_index_data_semirandom<-function(dt=PACIENTS,dt.variables=VARIABLES,codi="EK20
   BDADES_DT_INDEX<-UNA.VARIABLE %>% 
     left_join(UN.COLESTEROL,by="idp") %>% 
     mutate(dtindex.semirandom=ifelse(is.na(dat_col),dat_var,dat_col)) %>% 
-    select(idp,dtindex.semirandom)
+    dplyr::select(idp,dtindex.semirandom)
   
 }
 
@@ -3279,7 +3279,7 @@ matching_case_control<-function(dt=PACIENTS,variables.ps=llistaPS,dt_pacients_di
   # 4 Fer matching 
   
   # preparar dades per matching (idp + Llista matching)
-  dadesmatching<-dt.total %>% select(idp,edat,dtindex,event,sexe)
+  dadesmatching<-dt.total %>% dplyr::select(idp,edat,dtindex,event,sexe)
   
   # Genero llista de covaraibles 
   formulaPS<-as.formula(paste("event", paste(variables.ps, collapse=" + "), sep=" ~ "))
@@ -4053,7 +4053,7 @@ comptar_valors<-function(dt=dadesevents,variables=c("EV.TER.ARTER_PERIF","EV.TER
     mutate_("combi_vars"=pepito) %>% 
     mutate(
       num_valors=str_count(combi_vars,valor)) %>% 
-    select(-combi_vars)
+    dplyr::select(-combi_vars)
   
 }
 
