@@ -63,6 +63,10 @@ directori_treball<-function(subdirectori,directori) {
 }
 
 
+
+
+
+
 #
 #  Etiquetar les variables de les dades      #####
 ###
@@ -281,7 +285,7 @@ selectorvariables=function(taula="table1",taulavariables="variables_R.xls",dt=da
 }
 
 
-#  Selector de variables TAULA DE--------
+#  Extreure.Variables: Selector de variables TAULA DE--------
 #
 extreure.variables=function(taula="table1",taulavariables="variables_R.xls") {
   
@@ -292,7 +296,7 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls") {
   variables <- data.frame(readxl::read_excel(taulavariables))
   variables[is.na(variables)]<- 0
 
-  taula<-sym(taula)
+  taula<-rlang::sym(taula)
   
   # filtratge 
   kk<-variables %>% dplyr::filter(!!taula>0) %>% arrange(!!taula) %>% dplyr::select(camp) %>% as.vector()
