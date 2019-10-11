@@ -914,6 +914,91 @@ extreure_coef_mice_estrats<-function(tempData,data_list,X=c("bmi","hyp"),Y="chl"
 }
 
 
+# extreure.dif.proporcions() : Diferencia de % respecte una categoria ref + interval de confiança  
+
+extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grup="Sex") {
+
+  # dades=dades
+  # outcome="Prediabetes"
+  # ref_cat=NA
+  # grup="Sex"
+  
+  # Canviar arguments per ser evaluats
+  outcome_eval<-sym(outcome)
+  grup_eval<-sym(grup)
+  
+  # refCat
+  if (is.na(ref_cat)) ref_cat=levels(dades[[grup]])[1]
+  
+  # N per grup
+  dades_N<-dades %>% 
+    group_by(!!outcome_eval) %>% count(!!grup_eval) %>% ungroup() %>% 
+    spread(key=!!outcome_eval,value=n) 
+  
+  levels_outcome=names(dades_N)[names(dades_N)!=grup]
+  
+  # Proporcions per grup
+  dades_P<-dades %>% group_by(!!outcome_eval) %>% count(!!grup_eval) %>% ungroup() %>% 
+    spread(key=!!outcome_eval,value=n) %>% 
+    mutate(sum=rowSums(.[2:ncol(.)])) %>% 
+    mutate_if(is.numeric,funs(./sum)) %>% 
+    select(-sum) 
+  
+  # Parts de errors estandards: p, variancia (p*q/n), n 
+  prop<-dades_P %>% select(c(2:ncol(.)))
+  enes<-dades_N %>% select(c(2:ncol(.)))
+  variancia<-(prop*(1-prop))/rowSums(enes)
+  colnames(enes)<-names(enes) %>% paste0(".n")
+  
+  variancia <- select(dades_N,1) %>% cbind(variancia)
+  
+  # Rotate 
+  var2<-variancia %>% 
+    gather(temp, value,-grup) %>% 
+    spread(!!grup_eval, value) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
+    select(-temp)
+  
+  # Error standard de la diferencia [p1*(1-p1)]n1 + [(p2*1-p2)/n2] respecte catRef
+  SE_dif_prop<-var2 %>% 
+    mutate_all(function(x) sqrt (x + .[[ref_cat]])) %>% 
+    dplyr::select(-ref_cat)
+  
+  # Rotate (Diferencia respecte una de cat ref_cat ("No"))
+  prop<-dades_P %>% 
+    gather(temp,prop,-grup) %>% 
+    spread(!!grup_eval,prop) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
+    select(-temp)
+  
+  # Diferencia de proporcions 
+  dif_prop<-prop %>% mutate_all(function(x) x - .[[ref_cat]])
+  dif_prop<-dif_prop %>% select(-ref_cat)
+  colnames(dif_prop)<-names(dif_prop) %>% paste0(".dif")
+  
+  # Calculo IC95% 
+  IC1<-dif_prop - (1.96*SE_dif_prop) %>% as_tibble()
+  colnames(IC1)<-names(dif_prop)[names(dif_prop)!=ref_cat] %>% paste0(".IC195")
+  IC2<-dif_prop + (1.96*SE_dif_prop)
+  colnames(IC2)<-names(dif_prop)[names(dif_prop)!=ref_cat] %>% paste0(".IC295")
+  
+  # Ho junto tot
+  dades_T<-data.frame(group=levels_outcome) %>% cbind(dif_prop,IC1,IC2) %>% as_tibble()
+  
+  # Transformar en %
+  dades_T<-dades_T %>% mutate_if(is.numeric,~ .*100)
+  
+  # Selecciono per printar en l'ordre
+  categories<-levels(dades[[grup]])[levels(dades[[grup]])!=ref_cat] %>% as.vector()
+  ncat<-length(categories)
+  # Genero taula ordenada per categories i en funcio
+  dades_select<-dades_T %>% select(1)
+  for (i in 1:ncat) {
+    dades_temp<-dades_T %>% select(contains(categories[i]))
+    dades_select<-dades_select %>% cbind(dades_temp) }
+  # Retorno dades 
+  
+  as_tibble(dades_select)
+  
+}
 
 
 #  K-M   plot #####
