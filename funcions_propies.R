@@ -1585,7 +1585,11 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
   # var="lipos2"
   # d="dades"
   # taulavariables="VARIABLES.xls"
-  
+  # var1="alb24hurine_value"
+  # var="lipos_corr"
+  # d="dades"
+  # taulavariables = conductor_variables
+
   ##  Llegeix criteris de variables 
   variables <- readxl::read_excel(taulavariables)
   variables[is.na(variables)]<- 0
@@ -1596,7 +1600,7 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
   x<-eval(parse(text=paste(d,"$",var1,sep="")))
   
   ppp<-cbind()
-  for (i in 2:length(llistavariables)) {
+  for (i in 1:length(llistavariables)) {
     
     var2<-paste(d,llistavariables[i],sep="$")
     y<-eval(parse(text=var2))
