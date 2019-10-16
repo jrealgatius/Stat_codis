@@ -913,32 +913,31 @@ extreure_coef_mice_estrats<-function(tempData,data_list,X=c("bmi","hyp"),Y="chl"
   models_dt
 }
 
-
 # extreure.dif.proporcions() : Diferencia de % respecte una categoria ref + interval de confiança  
-
-extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grup="Sex") {
-
+# Extreu : Diferencia de % respecte una categoria ref + interval de confiança  
+extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups="Sex") {
+  
   # dades=dades
   # outcome="Prediabetes"
   # ref_cat=NA
-  # grup="Sex"
+  # grups="Sex"
   
   # Canviar arguments per ser evaluats
   outcome_eval<-sym(outcome)
-  grup_eval<-sym(grup)
+  grups_eval<-sym(grups)
   
   # refCat
-  if (is.na(ref_cat)) ref_cat=levels(dades[[grup]])[1]
+  if (is.na(ref_cat)) ref_cat=levels(dades[[grups]])[1]
   
-  # N per grup
+  # N per grups
   dades_N<-dades %>% 
-    group_by(!!outcome_eval) %>% count(!!grup_eval) %>% ungroup() %>% 
+    group_by(!!outcome_eval) %>% count(!!grups_eval) %>% ungroup() %>% 
     spread(key=!!outcome_eval,value=n) 
   
-  levels_outcome=names(dades_N)[names(dades_N)!=grup]
+  levels_outcome=names(dades_N)[names(dades_N)!=grups]
   
-  # Proporcions per grup
-  dades_P<-dades %>% group_by(!!outcome_eval) %>% count(!!grup_eval) %>% ungroup() %>% 
+  # Proporcions per grups
+  dades_P<-dades %>% group_by(!!outcome_eval) %>% count(!!grups_eval) %>% ungroup() %>% 
     spread(key=!!outcome_eval,value=n) %>% 
     mutate(sum=rowSums(.[2:ncol(.)])) %>% 
     mutate_if(is.numeric,funs(./sum)) %>% 
@@ -954,8 +953,8 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grup="
   
   # Rotate 
   var2<-variancia %>% 
-    gather(temp, value,-grup) %>% 
-    spread(!!grup_eval, value) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
+    gather(temp, value,-grups) %>% 
+    spread(!!grups_eval, value) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
     select(-temp)
   
   # Error standard de la diferencia [p1*(1-p1)]n1 + [(p2*1-p2)/n2] respecte catRef
@@ -965,8 +964,8 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grup="
   
   # Rotate (Diferencia respecte una de cat ref_cat ("No"))
   prop<-dades_P %>% 
-    gather(temp,prop,-grup) %>% 
-    spread(!!grup_eval,prop) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
+    gather(temp,prop,-grups) %>% 
+    spread(!!grups_eval,prop) %>% right_join(tibble(temp=levels_outcome),by="temp") %>% 
     select(-temp)
   
   # Diferencia de proporcions 
@@ -987,13 +986,15 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grup="
   dades_T<-dades_T %>% mutate_if(is.numeric,~ .*100)
   
   # Selecciono per printar en l'ordre
-  categories<-levels(dades[[grup]])[levels(dades[[grup]])!=ref_cat] %>% as.vector()
+  categories<-levels(dades[[grups]])[levels(dades[[grups]])!=ref_cat] %>% as.vector()
   ncat<-length(categories)
   # Genero taula ordenada per categories i en funcio
   dades_select<-dades_T %>% select(1)
   for (i in 1:ncat) {
     dades_temp<-dades_T %>% select(contains(categories[i]))
     dades_select<-dades_select %>% cbind(dades_temp) }
+  
+  
   # Retorno dades 
   
   as_tibble(dades_select)
