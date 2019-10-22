@@ -2581,11 +2581,11 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
                                      pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
   
-  # dt=dadesinicials
+  # dt=dades
   # taulavariables = conductor_variables
-  # criteris = "exclusio"
-  # etiquetes="exc_lab"
-  # grups="grup"
+  # criteris = "c_exclusio1"
+  # etiquetes="descripcio"
+  # grups="event"
   # pob_lab=c("Pob inicial","Pob final")
   # ordre="exc_ordre"
   
@@ -2596,8 +2596,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   if (!is.na(grups)) {
     ngrups=length(table(dt[grups]))
     Etiqueta_pob_inicial=pob_lab[1]
-    Npob_inicial=dt %>% count() %>% as.numeric()
-    }
+    Npob_inicial=dt %>% count() %>% as.numeric() }
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
   variables <- readxl::read_excel(taulavariables)
@@ -2605,7 +2604,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
   # variables<-variables %>% select_if(names(.)%in%c("camp",criteris,etiquetes,ordre)) select_if no funciona
-  variables<-variables %>% dplyr::select(c("camp",criteris,etiquetes,ordre))
+  variables<-variables %>% dplyr::select(c("camp",criteris,etiquetes,ordre)) %>% arrange_(ordre)
   
   ##  Elimino els espais en blanc de les variables factor
   dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) %>% as.data.table()
@@ -2624,24 +2623,24 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
 
   # Genero la llista de filtres 
   maco_criteris<-variables %>% 
-    dplyr::select_("camp",criteris) %>%
+    dplyr::select_("camp",criteris,ordre) %>%
     tidyr::unite_("filtres", c("camp", criteris),sep="") 
 
   maco_criteris<-maco_noms %>% cbind(maco_criteris) %>% mutate(tipus_cri="pur")
   
   maco_miss<-variables %>% 
-    dplyr::select_("camp") %>%
-    dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select(filtres)
+    dplyr::select_("camp",ordre) %>%
+    dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select_("filtres",ordre)
 
   maco_miss<-maco_noms %>% cbind(maco_miss) %>% mutate(tipus_cri="missing")
   
-  maco_criteris<-maco_criteris %>% rbind(maco_miss) %>% arrange_("camp")
+  maco_criteris<-maco_criteris %>% rbind(maco_miss) %>% arrange_(ordre,"camp")
 
   ## Generar taula amb dades per cada criteri d'exclusió  
   num_criteris<-data.frame()
   ## Generar dades dels critersi criteris 
   for (i in 1: length(maco_criteris$filtres)){
-    
+    # i=1
     dades_criteris<-datatemp %>% 
       dplyr::filter_(as.character(maco_criteris[i,]$filtres)) %>% 
       group_by(grup) %>% summarise (n=n(),any(n)) %>% mutate(criteri=i) %>% 
@@ -2651,15 +2650,18 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
              ) %>% 
       ungroup
     
-    
     num_criteris<-num_criteris %>% rbind(dades_criteris)
-    
     }
   
   # Expandir per tenir una fila per criteri amb valor 
   taula_criteris<-num_criteris %>% 
     expand(grup,camp,filtre_tipus) %>% 
     left_join(num_criteris,by=c("grup","camp","filtre_tipus"))
+  
+  # Afegir ordre i ordenar a taula_criteris
+  taula_criteris<-
+    maco_criteris %>% select_("camp",ordre) %>% unique() %>% 
+    right_join(taula_criteris,by="camp") %>% arrange_(ordre) %>% as_tibble()
   
     # Netejar aquelles files que no tinguin cap 0 en cap dels grups 
   temp<-taula_criteris %>% mutate(n=ifelse(is.na(n),0,n)) %>% 
@@ -2681,7 +2683,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
 
   taula_criteris<-taula_criteris %>% mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
   
-  taula_criteris<-taula_criteris %>% arrange(camp,filtre_tipus,grup)
+  taula_criteris<-taula_criteris %>% arrange(filtre_tipus,grup)
 
   ## I ara passar informació generada a vectors per passar-ho al diagrameR
   
@@ -2706,8 +2708,8 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   datatemp<-datatemp %>% dplyr::filter(eval(parse(text=filtre_total)))
   
   # Generar N per cada grup Inicial i Final x grup 
-  
-  pob.i<-dt %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  grups_eval<-sym(grups)
+  pob.i<-dt %>% group_by(!!grups_eval) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
   pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
 
   n_pob1<-c(pob.i$n[1],pob.f$n[1])
@@ -2724,8 +2726,7 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   # Si només hi ha un grup pob inicial es parametres inicials
   if (ngrups==1) {pob_lab_grup1=pob_lab}
   if (ngrups==1) {Npob_inicial=n_pob1}
-  
-  
+
   # Crido diagrama 
   diagrama<-diagramaFlowchart(grups=ngrups,
                          pob=Npob_inicial,
