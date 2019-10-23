@@ -2579,7 +2579,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 #  FLOW-CHART A partir de criteris d'exclusió en taulavariable  -----------------------------------
 
 criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
-                                     pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
+                                   pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
   
   # dt=dades
   # taulavariables = conductor_variables
@@ -2718,10 +2718,14 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   
   #  Generar Etiquetes: Pob inicial i final x grup 
   
-  # Etiquetes grups
-  pob_lab_grup1<-c(paste0("Group: ",taula_criteris[["grup"]][1]),paste0("Group: ",taula_criteris[["grup"]][1]))
-  pob_lab_grup2<-c(paste0("Group: ",taula_criteris[["grup"]][2]),paste0("Group: ",taula_criteris[["grup"]][2]))
-  pob_lab_grup3<-c(paste0("Group: ",taula_criteris[["grup"]][3]),paste0("Group: ",taula_criteris[["grup"]][3]))
+  # Etiquetes de grups
+  pob_lab_grup1<-c(paste0("Group: ",names(table(dt[[grups]]))[1]),paste0("Group: ",names(table(dt[[grups]]))[1]))
+  pob_lab_grup2<-c(paste0("Group: ",names(table(dt[[grups]]))[2]),paste0("Group: ",names(table(dt[[grups]]))[2]))
+  pob_lab_grup3<-c(paste0("Group: ",names(table(dt[[grups]]))[3]),paste0("Group: ",names(table(dt[[grups]]))[3]))
+  
+  # pob_lab_grup1<-c(paste0("Group: ",taula_criteris[["grup"]][1]),paste0("Group: ",taula_criteris[["grup"]][1]))
+  # pob_lab_grup2<-c(paste0("Group: ",taula_criteris[["grup"]][2]),paste0("Group: ",taula_criteris[["grup"]][2]))
+  # pob_lab_grup3<-c(paste0("Group: ",taula_criteris[["grup"]][3]),paste0("Group: ",taula_criteris[["grup"]][3]))
   
   # Si només hi ha un grup pob inicial es parametres inicials
   if (ngrups==1) {pob_lab_grup1=pob_lab}
