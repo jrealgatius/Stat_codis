@@ -1111,17 +1111,18 @@ ggplot_grups<-function(Y="DIS_estatina",dt=dades,X="edat",grup="sexe") {
 # Retorna un mapa temporal (datainicial-datafinal per grups) Individus a partir de: 
 # dades, datainicial, data final, id, grup color, grup linea, finestra (porca1,porca2)
 
-MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp",grup_color=NA,grup_linea=NA,lim_inf=-Inf,lim_sup=Inf) {
+MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp",grup_color=NA,grup_linea=NA,lim_inf=-Inf,lim_sup=Inf,add_point=NA) {
   
-  # dades=dadestemp
-  # datainicial="dtinclusio"
-  # datafinal="dat_sit_2014"
-  # id="id"
-  # grup_color="sexe"
-  # grup_linea="sc_bcn"
+  # dades=mostra_dt
+  # datainicial="datainicial"
+  # datafinal="datafinal"
+  # id="idp"
+  # grup_color=NA
+  # grup_linea=NA
   # lim_inf=-Inf
   # lim_sup=+Inf
-   
+  # add_point=NA
+
   if (is.na(grup_linea)) dades<- dades %>% mutate(Overall="Overall")
   if (is.na(grup_linea)) grup_linea<- "Overall"
 
@@ -1146,7 +1147,6 @@ MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp
   grup_linea<-rlang::sym(grup_linea)
   
   # Calculo dies de duració  
-
   dades<-dades %>% 
     mutate(
       dia0=lubridate::ymd(!!datainicial),
@@ -1154,14 +1154,23 @@ MAP_ggplot<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp
       days_duration=lubridate::interval(dia0,diaf) %>% lubridate::as.duration()/lubridate::ddays()
       )
 
-  # Gráfico el tema
-  ggplot(dades,aes(x =dia0,y =!!id, color=!!grup_color,group=!!grup_linea,linetype=!!grup_linea))+
+  # Gráfico el tema 
+  figura<-ggplot(dades,aes(x =dia0,y =!!id, color=!!grup_color,group=!!grup_linea,linetype=!!grup_linea))+
     geom_segment(aes(x =dia0, xend=diaf, y =!!id, yend = !!id),arrow = arrow(length = unit(0.03, "npc"))) +
     geom_point(aes(dia0, !!id)) + 
     geom_text(vjust = -0.5, hjust=0, size = 3,aes(x =dia0, y = !!id,label = paste(round(days_duration, 2), "days")))+
     scale_colour_brewer(palette = "Set1")+
     xlim(porca1,porca2)+
-    theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
+    theme(legend.position="top",legend.background = element_rect(fill="gray80",size=1, linetype="solid", colour ="black")) 
+  
+  if (!is.na(add_point)) {
+    figura<-figura+
+      geom_point(aes(!!rlang::sym(add_point),!!id),size=3,shape=8) +
+      geom_text(vjust = -0.5, hjust=0, size = 2,aes(x =!!rlang::sym(add_point), y = !!id,label = add_point))
+    }
+  
+  figura
+
 
 }
 
@@ -1315,13 +1324,14 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 }
 
 # Dibuixa mapa temporal univariant per verificar solapaments
-MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf) {
+MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf,add_point=NA) {
   
   # dades=farmacs_dt_sense_gaps %>% filter(GRUP=="IDPP4")
   # datainicial="dat"
   # datafinal="datafi"
   # id="idp"
   # Nmostra=2
+  # add_point=NA
   
   # Conversió a Sym per evaluació  
   datainicial<-rlang::sym(datainicial)
@@ -1338,12 +1348,22 @@ MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",i
   dades<-dades %>%  mutate(dia0=!!datainicial,diaf=!!datafinal,days_duration=diaf-dia0)
   
   # Gráfico el tema
-  ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id_sym))+
+  figura<- ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id_sym))+
     ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id_sym, yend = !!id_sym),arrow =  ggplot2::arrow(length = ggplot2::unit(0.03, "npc"))) +
     ggplot2::geom_point(ggplot2::aes(dia0, !!id_sym)) + 
     ggplot2::geom_text(vjust = -0.5, hjust=0, size = 3, ggplot2::aes(x =dia0, y = !!id_sym,label = paste(round(days_duration, 2), "days")))+
     ggplot2::scale_colour_brewer(palette = "Set1")+
     ggplot2::theme(legend.position="top",legend.background =  ggplot2::element_rect(fill="gray80",size=1, linetype="solid", colour ="black"))
+  
+  if (!is.na(add_point)) {
+    figura<-figura+
+      geom_point(aes(!!rlang::sym(add_point),!!id_sym),size=3,shape=8,colour="red") +
+      geom_text(vjust = -0.5, hjust=0, size = 2,aes(x =!!rlang::sym(add_point), y = !!id_sym,label = add_point)) 
+    }
+  
+  figura
+  
+  
 }
 
 
@@ -2580,15 +2600,14 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 
 criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
                                    pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
-  
   # dt=dades
   # taulavariables = conductor_variables
   # criteris = "c_exclusio1"
-  # etiquetes="descripcio"
   # grups="event"
   # pob_lab=c("Pob inicial","Pob final")
   # ordre="exc_ordre"
-  
+  # etiquetes = "exc_lab"
+
   ### Si hi ha grups capturar el nombre categories
   # Per defecte UN sol grup
   ngrups=1
