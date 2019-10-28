@@ -329,6 +329,15 @@ factoritzar.NO.YES<-function(dt=dadesDF,columna="factor",taulavariables="variabl
   
 }
 
+# netejar blancs  ---------
+# Elimianar espais en blanc de variables character de totes les columnes d'una base de dades
+netejar_espais<-function(dt=dades) {
+    # dt=dt_total
+  dt<-dt %>% mutate_if(is.character,stringr::str_trim)
+  }
+
+
+
 # factoritzar vector ------------
 # factoritzar una llista de variables donades unes dades i un vector de variables 
 
@@ -2500,37 +2509,45 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
 #  AGREGADOR DE VISITES      ###############
 ### Envio la historic de visites i retorno numero de visites en la finestra de temps 
 
-agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0)){
+agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),N="NA"){
   
-  # dt=VISITES
-  # bd.dindex = bdades_index
-  # finestra.dies=c(-365,-45)
+  # dt=dt_visites
+  # bd.dindex = "20070101"
+  # finestra.dies=c(-365,+Inf)
+  # N="N"
+  
+  N_sym=rlang::sym(N)
   
   ## Afegir en dataindex (+dtindex) en historic de Visites
   dt<-afegir_dataindex(dt,bd.dindex) 
   
   ##### filtrar per intervals de dates 
   # Convertir dates a numeric
-  dt<-dt %>% mutate(dat=as.Date(as.character(dat),format="%Y%m%d") %>% as.numeric(),
-                    dtindex=dtindex %>% as.numeric()) %>% as_tibble()
+  if (class(dt$dat)=="Date") dt$dat_num=as.numeric(dt$dat)
+  if (class(dt$dtindex)=="Date") dt$dtindex_num=as.numeric(dt$dtindex)
+  
+  if (class(dt$dat)!="Date") dt$dat_num=as.Date(as.character(dt$dat),format="%Y%m%d") %>% as.numeric()
+  if (class(dt$dtindex)!="Date") dt$dtindex_num=as.Date(as.character(dt$dtindex),format="%Y%m%d") %>% as.numeric()
   
   ##### filtrar per intervals de dates 
-  dt<-dt %>% dplyr::filter(dat>= dtindex +finestra.dies[1] & 
-                             dat<= dtindex +finestra.dies[2]) 
-  
-  
-  # dt<-dt[data.table::between(
-  #   lubridate::ymd(dat),
-  #   lubridate::ymd(dtindex)+finestra.dies[1],
-  #   lubridate::ymd(dtindex)+finestra.dies[2])]  
-  
+  dt<-dt %>% dplyr::filter(dat_num>= dtindex_num +finestra.dies[1] & 
+                             dat_num<= dtindex_num +finestra.dies[2])
+
   ##### Agregar (Suma de visites en interval independentment del tipus)
   
-  paco<-dt %>% 
+  if (N=="NA") {paco<-dt %>% 
     dplyr::group_by(idp,dtindex,cod) %>%                    # Agrupo per id 
     dplyr::count() %>%           # Conto el numero visites per codi 
     dplyr::ungroup()  
+  }
   
+  if(N!="NA") {
+  paco<-dt %>% 
+    dplyr::group_by(idp,dtindex,cod) %>%                    # Agrupo per id 
+    dplyr::summarize(n=sum(!!N_sym)) %>%           # Conto el numero visites per codi 
+    dplyr::ungroup() 
+    }
+    
   # RESHAPE per idp 
   visites <- paco[,c("idp","dtindex","cod","n")] %>% 
     dplyr::select(idp,dtindex,visites=cod,n) %>% 
