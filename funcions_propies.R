@@ -2509,14 +2509,16 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
 #  AGREGADOR DE VISITES      ###############
 ### Envio la historic de visites i retorno numero de visites en la finestra de temps 
 
-agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),N="NA"){
+agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),N="NA",data="NA"){
   
-  # dt=dt_visites
-  # bd.dindex = "20070101"
-  # finestra.dies=c(-365,+Inf)
-  # N="N"
+  # dt=visites_dt
+  # bd.dindex = "20161231"
+  # finestra.dies=c(-Inf,0)
+  # N="NA"
+  # data="NA"
   
   N_sym=rlang::sym(N)
+  data_sym=rlang::sym(data)
   
   ## Afegir en dataindex (+dtindex) en historic de Visites
   dt<-afegir_dataindex(dt,bd.dindex) 
@@ -2535,19 +2537,27 @@ agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),
 
   ##### Agregar (Suma de visites en interval independentment del tipus)
   
-  if (N=="NA") {paco<-dt %>% 
+  if (N=="NA" & data=="NA") {paco<-dt %>% 
     dplyr::group_by(idp,dtindex,cod) %>%                    # Agrupo per id 
     dplyr::count() %>%           # Conto el numero visites per codi 
     dplyr::ungroup()  
   }
   
-  if(N!="NA") {
+  if(N!="NA" & data=="NA") {
   paco<-dt %>% 
     dplyr::group_by(idp,dtindex,cod) %>%                    # Agrupo per id 
     dplyr::summarize(n=sum(!!N_sym)) %>%           # Conto el numero visites per codi 
     dplyr::ungroup() 
     }
-    
+  
+  # Si s'ha d'agregar data agafo el minim
+  if(data!="NA") {
+    paco<-dt %>% 
+      dplyr::group_by(idp,dtindex,cod) %>%  # Agrupo per id 
+      dplyr::summarize(n=min(!!data_sym,na.rm=T)) %>%       # data minima  
+      dplyr::ungroup() 
+    }
+  
   # RESHAPE per idp 
   visites <- paco[,c("idp","dtindex","cod","n")] %>% 
     dplyr::select(idp,dtindex,visites=cod,n) %>% 
