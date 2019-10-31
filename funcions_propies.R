@@ -1277,7 +1277,7 @@ Gaps<-function(dt=dades,K=14,Nmostra=10,finestraX=c(NA,NA),llavor=123){
 # Elimina solapaments i discontinuitats petites i retorna dades sense discontinuitats ni solapaments amb igual o menys registres
 # Retorna dades amb : id, datainici i datafi amb menys registres, havent eliminat solapaments i gaps (discontinuitat petita)
 
-agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal="datafi",gap=5){
+agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal="datafi",gap=5,sel=T){
   
   # dt=FX.FACTURATS_PRESCRITS_GRUPS
   # gap=60
@@ -1290,44 +1290,39 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
   datafinal_sym<-rlang::sym(datafinal)
   idp_sym=rlang::sym(id)
   
-  # Seleccionar dades necessaries amb noms sense sym
-  dt<-dt %>% dplyr::select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)
+  # Seleccionar dades necessaries amb noms sense sym::
+  dt<-dt %>% dplyr::select(idp=!!idp_sym, data=!!datainici_sym,datafi=!!datafinal_sym)%>%
+    mutate(data=lubridate::ymd(data),datafi=lubridate::ymd(datafi))  
   
+  #filtrem els errors!!!!
+  origen<-dt
+  dt<-dt%>%mutate(error=case_when(datafi<data~1 ,
+                                  is.na(data) ~ 1,
+                                  is.na(datafi) ~ 1,
+                                  TRUE ~0))
+  # Printa errors
+  if(sel){
+    errors<-dt %>% dplyr::filter(error == 1)
+    print("ull! aquests són possibles d'errors de dates!,que s'han ELIMINAT!")
+    print(errors)
+  } 
+  # Filtra
+  if (sel) { dt<-dt %>% dplyr::filter(error == 0) }
+  if (sel==F) { dt<-dt }
   
-  # 1. Eliminar solapaments 
-  dt<-dt %>% 
-    group_by(idp) %>% 
-    arrange(data) %>% 
-    mutate(indx = c(0, cumsum(as.numeric(lead(data)) >
-                                cummax(as.numeric(datafi)))[-n()])) %>%
+  # 1. Eliminar solapaments [!!!]
+  dt2<-dt %>%
+    group_by(idp) %>% arrange(data) %>%
+    mutate(indx = c(0, cumsum(as.numeric(lead(data)) >cummax(as.numeric(datafi)+gap))[-n()]))%>%
     group_by(idp, indx) %>%
     summarise(data = min(data), datafi = max(datafi)) %>%
-    dplyr::select(-indx) 
+    dplyr::select(-indx)%>%ungroup()
   
+  # list(dades0=origen,dades1=dt,dades2=dt2)
   
-  # 2. ELiminar Gaps (discontinuitats)
-  
-  # MAP_ggplot(dades=dt,datainicial="data",datafinal="datafi",id="idp",grup_color=NA,grup_linea=NA)
-  dt<-dt %>% 
-    mutate(gap1=(data-lag(datafi))) %>%
-    mutate(gap2=case_when(gap1 > gap ~1, TRUE ~0)) %>%
-    mutate(gap3=(cumsum(gap2))) %>% 
-    ungroup()
-
-  # 3. Agregate per idp-gap
-  dt2<-dt %>%  mutate (idp2=idp) %>%
-    dplyr::select(idp,data,datafi,gap3,idp,idp2) %>%
-    group_by(idp,gap3)%>%
-    summarise(datainici= min(data), datafi= max(datafi),idp2=min(idp2)) %>%
-    ungroup()
-
-  dt2<-dt2 %>% dplyr::select("idp","datainici","datafi")
-
-  # MAP_ggplot(dades= dt2 %>% head(10),datainicial="datainici",datafinal="datafi",id=id)
-
   # Renombro noms dels camps originals
   colnames(dt2)<-c(idp_sym,datainici_sym,datafinal_sym)
-
+  
   dt2
   
 }
