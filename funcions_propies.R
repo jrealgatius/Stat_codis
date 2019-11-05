@@ -430,7 +430,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
 # Genera dummis (0/1) a partir d'una variable del data frame   -----------------
 # Retorna la variable 
 
-make_dummies <- function(dt,v, prefix = '') {
+make_dummies <- function(dt,variable, prefix = '') {
   
   # dt<-dades
   # variable<-"grup"
