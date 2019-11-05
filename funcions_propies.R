@@ -426,6 +426,26 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   
 }
 
+
+# Genera dummis (0/1) a partir d'una variable del data frame   -----------------
+# Retorna la variable 
+
+make_dummies <- function(dt,v, prefix = '') {
+  
+  # dt<-dades
+  # variable<-"grup"
+  # prefix<-""
+  v<-dades %>% dplyr::pull(variable)
+  s <- sort(unique(v))
+  d <- outer(v, s, function(v, s) 1L * (v == s))
+  colnames(d) <- paste0(prefix, s)
+  d<-d %>% as_tibble()
+  
+  dt<-cbind(dt,d)
+}
+
+
+
 # Retorna objecte Surv en dt a partir de dades (dt), event("20150531" / NA), dtindex(Date), dtsortida(20171231),  
 generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
   
