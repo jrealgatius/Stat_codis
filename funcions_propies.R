@@ -434,8 +434,9 @@ make_dummies <- function(dt,variable, prefix = '') {
   
   # dt<-dades
   # variable<-"grup"
-  # prefix<-""
-  v<-dades %>% dplyr::pull(variable)
+  # prefix<-"grup_"
+ 
+  v<-dt %>% dplyr::pull(variable)
   s <- sort(unique(v))
   d <- outer(v, s, function(v, s) 1L * (v == s))
   colnames(d) <- paste0(prefix, s)
