@@ -446,6 +446,41 @@ make_dummies <- function(dt,variable, prefix = '') {
 }
 
 
+# Recodificar rangs de valors que cauen fora interva a missings  -----------------
+recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid") {
+  
+  # dt=dades
+  # taulavariables=conductor_variables
+  # rang="rang_valid"
+  
+  # Llegir dades
+  variables<-readxl::read_excel(conductor_variables,col_types = "text")
+  temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid)) 
+  
+  # Separo limit inferior i limit superior
+  rangs<-temp$rang_valid %>% stringr::str_split_fixed("-",2) %>% as_tibble()
+  temp<-temp %>% cbind(rangs)
+  
+  # Inicio blucle
+  
+  num_recodes<-length(temp[,1])
+  # Assignar a primer element (A partir d'aquí fer un for)
+  
+  for (i in 1:num_recodes) {
+  # i<-2
+  camp<-temp[i,]$camp
+  linf<-temp[i,]$V1 %>% as.numeric()
+  lsup<-temp[i,]$V2%>% as.numeric()
+  
+  # recodifico en missings els que estan fora de rang 
+  dt<-dt %>% mutate_at(camp,~if_else(.<linf | .>lsup,NA_real_,.))
+  }
+  
+  dt
+  
+}
+
+
 
 # Retorna objecte Surv en dt a partir de dades (dt), event("20150531" / NA), dtindex(Date), dtsortida(20171231),  
 generar_Surv<-function(dt,event,dtindex="dtindex",dtsortida="sortida"){
