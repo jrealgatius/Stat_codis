@@ -74,7 +74,7 @@ directori_treball<-function(subdirectori,directori) {
 
 generar_dir_mostra_RDS<-function(directori="dades/SIDIAP",
                                  fitxer_poblacio="METPLUS_entregable_poblacio_20181126_190346.rds",
-                                 mida_mostra=10000,prefix="test",
+                                 mida_mostra=10000,
                                  prefix="test",
                                  directori_test="mostra") {
   
