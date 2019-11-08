@@ -63,7 +63,7 @@ directori_treball<-function(subdirectori,directori) {
 }
 
 
-# generar_dir_mostra_RDS()  ----------------------
+# generar_mostra_fitxers()  ----------------------
 
 # Llegir tots els fitxers RDS dins d'un directori i generar una mostra aleatoria i salvar-lo en un directori "mostra"
 
@@ -72,33 +72,42 @@ directori_treball<-function(subdirectori,directori) {
 # 3 Afafar la mostra i filtrar-los 
 # 4 Salvar-los en un directori
 
-generar_dir_mostra_RDS<-function(directori="dades/SIDIAP",
+generar_mostra_fitxers<-function(directori="dades/SIDIAP",
                                  fitxer_poblacio="METPLUS_entregable_poblacio_20181126_190346.rds",
                                  mida_mostra=10000,
                                  prefix="test",
                                  directori_test="mostra") {
   
-  # directori<-"dades/SIDIAP"
-  # fitxer_poblacio<-"METPLUS_entregable_poblacio_20181126_190346.rds"
-  # mida_mostra<-70000
-  # prefix=""
-  # directori_test="mostra"
+  # directori="dades/SIDIAP"
+  # fitxer_poblacio="METPLUS_entregable_poblacio_20181126_190346.rds"
+  # mida_mostra=70000
+  # prefix="test"
+  # directori_test="mostra_test"
   
-  # Funció interna per llegir fitxers
-  LLEGIR.fitxer<-function(n=Nmostra,directori,fitxer) {
-    readRDS(directori %>% here::here(fitxer)) %>% as_tibble() %>% head(n)}
   
-  # Llista de fitxers 
-  llista_de_fitxers<-list.files(directori) [list.files(directori) %>% stringr::str_detect("rds")] 
+  # Funció interna per llegir fitxer txt o rds
+  LLEGIR.fitxer<-function(n,directori,fitxer) {
+    
+    if (stringr::str_detect(fitxer,"\\.txt$")){
+      dt<-data.table::fread(directori %>% here::here(fitxer)) %>% as_tibble() %>% head(n)}
+
+    if (stringr::str_detect(fitxer,"\\.rds$")){
+      dt<-readRDS(directori %>% here::here(fitxer)) %>% as_tibble() %>% head(n)}
+    dt}
   
-  # Genero el directori on posare els fitxers nous
+
+  # Llista de fitxers .rds | .txt
+  llista_de_fitxers<-list.files(directori) [list.files(directori) %>% stringr::str_detect("\\.rds$") |
+                                              list.files(directori) %>% stringr::str_detect("\\.txt$")] 
+
+  # Genero el directori mostra
   directori_mostra<-paste0(directori,"/",directori_test)
   if (!file.exists(directori_mostra)) {
     # Crear directori si no existeix 
     dir.create(file.path(directori,directori_test), showWarnings = FALSE)
-  }
+    }
   
-  # Si existeixe algun fitxer saltar / Si es fals generar-los
+  # Si NO existeix algun fitxer GENERAR LOS / Si EXISTEIX algun  saltar 
   if (!file.exists(paste0(directori_mostra,"/",llista_de_fitxers)) %>% any()) {
     
     # Llegir ids mostra de fitxer poblacio
@@ -106,26 +115,27 @@ generar_dir_mostra_RDS<-function(directori="dades/SIDIAP",
     
     # Posar noms per que els guardi
     llista_de_fitxers<-setNames(llista_de_fitxers,llista_de_fitxers)
-    # Llegir fitxers
-    llista_rds<-llista_de_fitxers %>% purrr::map(~LLEGIR.fitxer(n=mida_mostra,directori = directori,fitxer=.x))
-    
+    # Llegir fitxers complerts
+    llista_rds<-llista_de_fitxers %>% purrr::map(~LLEGIR.fitxer(n=Inf,directori = directori,fitxer=.x))
+
     # Filtrar via semijoint de tota la llista
     llista_rds_redux<-llista_rds %>% purrr::map(~semi_join(.x,dt_ids))
     
     # Ara salvar-los en un surbdirectori amb el nom triat 
     
     # Genero noms de fitxers dins directori test
+    llista_de_fitxers<-str_replace_all(llista_de_fitxers, "\\.txt$", ".rds")
     llista_de_noms_fitxers_nous<-paste0(directori_mostra,"/",prefix,llista_de_fitxers)
+ 
     
-    # Salvo fitxers en directori
+    # Salvo en format rds tots els fitxers en directori
     # saveRDS(llista_rds_redux[[1]],file=llista_de_fitxers_nous[1])
     purrr::map2(llista_rds_redux,llista_de_noms_fitxers_nous,~saveRDS(.x,file=.y))
     
   }
-  
-  
+ 
   if (file.exists(paste0(directori_mostra,"/",llista_de_fitxers)) %>% any()) {
-    print ("Algun d'aquests fitxers ja existeixen")
+    print ("Algun d'aquests fitxers ja existeix")
   }
   
   
