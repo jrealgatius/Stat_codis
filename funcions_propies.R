@@ -2751,44 +2751,76 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 
 #  FLOW-CHART A partir de criteris d'exclusió en taulavariable  -----------------------------------
 
-criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",
-                                   pob_lab=c("Pob inicial","Pob final"),etiquetes="etiqueta_exclusio",ordre="exc_ordre",grups=NA){
-  # dt=dades
-  # taulavariables = conductor_variables
-  # criteris = "c_exclusio1"
-  # grups="event"
-  # pob_lab=c("Pob inicial","Pob final")
-  # ordre="exc_ordre"
-  # etiquetes = "exc_lab"
+#fet avui 12.11.19  12:37 minuts 
 
+#  FLOW-CHART A partir de criteris d'exclusio en la Taulavariable-Conductor  -----------------------------------
+#  [a partir de maxim 3 grups, es pot fer un flow-chart condicionat per les exclusions que posarem al Conductor. ]
+#  [Aquest Flow-chart pot ser Global, o Sequencial, amb l'ordre condicionat al Condutor ]
+#  [D'aquesta manera , si al Conductor i posem quines son les excluisions i l'ordre, aplicarem el grafic eficientment!]
+#  [Tambe podem triar el color i la forma de les caixes del flow-chart, es una funcio dins d'una altra]
+
+
+
+criteris_exclusio_diagrama<-function(dt=dades,
+                                     taulavariables="VARIABLES_R3b.xls",
+                                     criteris="exclusio1",
+                                     pob_lab=c("Pob inicial","Pob final"),
+                                     etiquetes="etiqueta_exclusio",
+                                     ordre="exc_ordre",
+                                     grups=NA,
+                                     sequencial=T,
+                                     colors=c("white","grey"),
+                                     forma=c("ellipse","box")
+                                     
+                                                                          ){
+ 
+  #dt=dades
+  #taulavariables="VARIABLES_R3b.xls"
+  #criteris="exclusio1"
+  #pob_lab=c("Pob inicial","Pob final")
+  #etiquetes="NA"
+  #ordre="exc_ordre"
+  #grups="ASPIRINA"
+  #sequencial=T
+  
+  grups2=grups
+  
+  
   ### Si hi ha grups capturar el nombre categories
   # Per defecte UN sol grup
   ngrups=1
   # ngrups>1
   if (!is.na(grups)) {
     ngrups=length(table(dt[grups]))
+    
     Etiqueta_pob_inicial=pob_lab[1]
+    
     Npob_inicial=dt %>% count() %>% as.numeric() }
+  
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
   variables <- readxl::read_excel(taulavariables)
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
-  # variables<-variables %>% select_if(names(.)%in%c("camp",criteris,etiquetes,ordre)) select_if no funciona
-  variables<-variables %>% dplyr::select(c("camp",criteris,etiquetes,ordre)) %>% arrange_(ordre)
   
+ 
   ##  Elimino els espais en blanc de les variables factor
   dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) %>% as.data.table()
 
   ## Selecciono dades només de les variables implicades en el filtres 
-  llista_camps<-variables["camp"] 
+  #llista_camps<-variables["camp"] 
   
     ## Dades amb variables implicades en els filtres
   if (is.na(grups)) {dt<-dt %>% mutate(grup="constant")}  
   if (is.na(grups)) {grups="grup"}
   
+  datatemp0<-dt %>% dplyr::select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
   datatemp<-dt %>% dplyr::select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
+  
+  datatemp0<-datatemp0 %>% dplyr::filter(!is.na(grup))
+  datatemp<-datatemp %>% dplyr::filter(!is.na(grup))
+  
   
   # Genero filtres
   maco_noms<-variables["camp"]
@@ -2797,43 +2829,61 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   maco_criteris<-variables %>% 
     dplyr::select_("camp",criteris,ordre) %>%
     tidyr::unite_("filtres", c("camp", criteris),sep="") 
-
   maco_criteris<-maco_noms %>% cbind(maco_criteris) %>% mutate(tipus_cri="pur")
+  
   
   maco_miss<-variables %>% 
     dplyr::select_("camp",ordre) %>%
     dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select_("filtres",ordre)
-
   maco_miss<-maco_noms %>% cbind(maco_miss) %>% mutate(tipus_cri="missing")
   
-  maco_criteris<-maco_criteris %>% rbind(maco_miss) %>% arrange_(ordre,"camp")
+  maco_criteris<-maco_criteris %>% rbind(maco_miss)%>%dplyr::arrange_(ordre)
 
   ## Generar taula amb dades per cada criteri d'exclusió  
   num_criteris<-data.frame()
+  
+  
   ## Generar dades dels critersi criteris 
+  
+  datatemp2<-datatemp
+  
   for (i in 1: length(maco_criteris$filtres)){
-    # i=1
-    dades_criteris<-datatemp %>% 
+    
+    #i<-1
+    
+    kk<-maco_criteris[i,]$filtres
+    datatemp2<-datatemp2 %>%mutate(dumy=(if_else(eval(parse(text=kk)),1,0,missing =NULL)),
+                                   dumy = replace_na(dumy, 0))
+    
+    dades_criteris<-datatemp2 %>% 
       dplyr::filter_(as.character(maco_criteris[i,]$filtres)) %>% 
       group_by(grup) %>% summarise (n=n(),any(n)) %>% mutate(criteri=i) %>% 
       mutate(camp=maco_criteris[i,]$camp,
              filtre_tipus=maco_criteris[i,]$tipus_cri,
              filtre_forma=maco_criteris[i,]$filtres
-             ) %>% 
+      ) %>% 
       ungroup
     
     num_criteris<-num_criteris %>% rbind(dades_criteris)
+    #------------------------------------------------------------------------------#  
+    #  # Si es sequencial --> actualitza datatemp
+    if (sequencial) {
+      
+      datatemp2<-datatemp2 %>%dplyr::filter(dumy==0)
     }
+    
+    
+    #-------------------------------------------------------------------------------#  
+    
+    }
+  
+  # ull FEM l'ODRE !!!
   
   # Expandir per tenir una fila per criteri amb valor 
   taula_criteris<-num_criteris %>% 
     expand(grup,camp,filtre_tipus) %>% 
-    left_join(num_criteris,by=c("grup","camp","filtre_tipus"))
+    left_join(num_criteris,by=c("grup","camp","filtre_tipus"))%>%dplyr::arrange_("criteri")
   
-  # Afegir ordre i ordenar a taula_criteris
-  taula_criteris<-
-    maco_criteris %>% select_("camp",ordre) %>% unique() %>% 
-    right_join(taula_criteris,by="camp") %>% arrange_(ordre) %>% as_tibble()
   
     # Netejar aquelles files que no tinguin cap 0 en cap dels grups 
   temp<-taula_criteris %>% mutate(n=ifelse(is.na(n),0,n)) %>% 
@@ -2846,17 +2896,28 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
     dplyr::select(-suma_n) %>% 
     mutate (n=ifelse(is.na(n),0,n))
   
+  
 
   # Afegir etiquetes a num_criteris
   # Etiquetes dels criteris d'inclusio 
+  
+  if (etiquetes=="NA") {
+    variables<-variables %>% mutate(etiquetes=paste0(camp,":",variables[[criteris]]))
+    variables<-variables %>% mutate(etiquetes=stringr::str_remove_all(etiquetes,"'"))}
+  
+  etiquetes_sym=rlang::sym(etiquetes)
+  if (etiquetes!="NA") {variables<-variables %>% mutate(etiquetes=!!etiquetes_sym)}
+  
+  
   taula_etiquetes<- variables %>% dplyr::select_("camp",etiquetes) %>% rename_("etiqueta_exclusio"=etiquetes)
-    
   taula_criteris<-taula_criteris %>% left_join(taula_etiquetes,by="camp")
-
   taula_criteris<-taula_criteris %>% mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
   
-  taula_criteris<-taula_criteris %>% arrange(filtre_tipus,grup)
-
+  
+  #[AQUI!]#Creem els parametres que posramen ald Diagrammer!i si tenim un factor, 
+  #cada nivell del factor anira a una llista! 
+  
+  
   ## I ara passar informació generada a vectors per passar-ho al diagrameR
   
   # N d'esclusions 
@@ -2864,7 +2925,6 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
 
   # Etiquetes d'exclusions
   lab_exc<-taula_criteris[c("etiqueta_exclusio","grup")] %>% split(.$grup)
-  
   lab_exc<-lab_exc[[1]]$etiqueta_exclusio %>% as_vector
   
   # Calcular N població final per cada grup (3x1)
@@ -2879,49 +2939,93 @@ criteris_exclusio_diagrama<-function(dt=dades,taulavariables="VARIABLES_R3b.xls"
   # Aplicar FILTRE 
   datatemp<-datatemp %>% dplyr::filter(eval(parse(text=filtre_total)))
   
-  # Generar N per cada grup Inicial i Final x grup 
-  grups_eval<-sym(grups)
-  pob.i<-dt %>% group_by(!!grups_eval) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  #  Generar Etiquetes: Pob inicial i final x grup 
+  -------------------------------------------------------------------------------#
+  pob<-datatemp0%>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  pob.i<-datatemp0 %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
   pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
-
+  #-------------------------------------------------------------------------------#
+  
   n_pob1<-c(pob.i$n[1],pob.f$n[1])
   n_pob2<-c(pob.i$n[2],pob.f$n[2])
   n_pob3<-c(pob.i$n[3],pob.f$n[3])
   
+  ###################################################################
   #  Generar Etiquetes: Pob inicial i final x grup 
+  #  Etiquetes grups
   
-  # Etiquetes de grups
-  pob_lab_grup1<-c(paste0("Group: ",names(table(dt[[grups]]))[1]),paste0("Group: ",names(table(dt[[grups]]))[1]))
-  pob_lab_grup2<-c(paste0("Group: ",names(table(dt[[grups]]))[2]),paste0("Group: ",names(table(dt[[grups]]))[2]))
-  pob_lab_grup3<-c(paste0("Group: ",names(table(dt[[grups]]))[3]),paste0("Group: ",names(table(dt[[grups]]))[3]))
+  pob_lab_grup1<-c(paste0("Group Pob.Inicial  ",grups2,    ":  ",taula_criteris[["grup"]][1]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][1]))
+  pob_lab_grup2<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",taula_criteris[["grup"]][2]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][2]))
+  pob_lab_grup3<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",taula_criteris[["grup"]][3]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][3]))
   
-  # pob_lab_grup1<-c(paste0("Group: ",taula_criteris[["grup"]][1]),paste0("Group: ",taula_criteris[["grup"]][1]))
-  # pob_lab_grup2<-c(paste0("Group: ",taula_criteris[["grup"]][2]),paste0("Group: ",taula_criteris[["grup"]][2]))
-  # pob_lab_grup3<-c(paste0("Group: ",taula_criteris[["grup"]][3]),paste0("Group: ",taula_criteris[["grup"]][3]))
-  
+   
   # Si només hi ha un grup pob inicial es parametres inicials
-  if (ngrups==1) {pob_lab_grup1=pob_lab}
-  if (ngrups==1) {Npob_inicial=n_pob1}
+  #-------------------------------------------------------------------------------#
+  if ( ngrups==1) {
+    pob_lab_grup1<-pob_lab
+    pob_lab_grup2<-pob_lab
+    pob_lab_grup3<-pob_lab
+    exc1=n_exc[[1]]$n %>%as_vector
+    exc_lab1=lab_exc
+    pob1=n_pob1
+    pob_lab1=pob_lab_grup1
+  }
+  #-------------------------------------------------------------------------------#  
+  if ( ngrups==2) {
+    pob=Npob_inicial
+    pob_lab=Etiqueta_pob_inicial
+    exc1=n_exc[[1]]$n %>%as_vector
+    exc2=n_exc[[2]]$n %>%as_vector
+    exc_lab1=lab_exc
+    exc_lab2=lab_exc
+    pob1=n_pob1
+    pob2=n_pob2
+    pob_lab1=pob_lab_grup1
+    pob_lab2=pob_lab_grup2
+  }
+  #-------------------------------------------------------------------------------#
+  if ( ngrups==3) {
+    pob=Npob_inicial
+    pob_lab=Etiqueta_pob_inicial
+    exc1=n_exc[[1]]$n %>%as_vector
+    exc2=n_exc[[2]]$n %>%as_vector
+    exc3=n_exc[[3]]$n %>%as_vector
+    exc_lab1=lab_exc
+    exc_lab2=lab_exc
+    exc_lab3=lab_exc
+    pob1=n_pob1
+    pob2=n_pob2
+    pob3=n_pob3
+    pob_lab1=pob_lab_grup1
+    pob_lab2=pob_lab_grup2
+    pob_lab3=pob_lab_grup3
+  }
+  #-------------------------------------------------------------------------------# 
 
   # Crido diagrama 
-  diagrama<-diagramaFlowchart(grups=ngrups,
-                         pob=Npob_inicial,
-                         pob_lab=Etiqueta_pob_inicial,
-                         exc1=n_exc[[1]]$n %>% as_vector,
-                         exc2=n_exc[[2]]$n %>% as_vector,
-                         exc3=n_exc[[3]]$n %>% as_vector,
-                         
-                         exc_lab1=lab_exc,
-                         exc_lab2=lab_exc,
-                         exc_lab3=lab_exc,
-                         
-                         pob1=n_pob1,
-                         pob2=n_pob2,
-                         pob3=n_pob3,
-                         
-                         pob_lab1=pob_lab_grup1,
-                         pob_lab2=pob_lab_grup2,
-                         pob_lab3=pob_lab_grup3
+  diagrama<-diagramaFlowchart(grups=ngrups ,
+                              pob=pob,
+                              pob_lab=pob_lab,
+                              
+                              pob1=pob1,
+                              pob2=pob2,
+                              pob3=pob3,
+                              
+                              pob_lab1=pob_lab1,
+                              pob_lab2=pob_lab2,
+                              pob_lab3=pob_lab3,
+                              
+                              exc1=exc1,
+                              exc2=exc2,
+                              exc3=exc3,
+                              
+                              exc_lab1=exc_lab1,
+                              exc_lab2=exc_lab2,
+                              exc_lab3=exc_lab3,
+                              
+                              colors=colors,
+                              forma=forma
+                              
                          )
   
 
