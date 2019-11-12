@@ -2768,7 +2768,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      etiquetes="etiqueta_exclusio",
                                      ordre="exc_ordre",
                                      grups=NA,
-                                     sequencial=T,
+                                     sequencial=F,
                                      colors=c("white","grey"),
                                      forma=c("ellipse","box")
                                      
