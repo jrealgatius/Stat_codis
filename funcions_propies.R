@@ -2812,7 +2812,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
   #llista_camps<-variables["camp"] 
   
     ## Dades amb variables implicades en els filtres
-  if (is.na(grups)) {dt<-dt %>% mutate(grup="constant")}  
+  if (is.na(grups)) {dt<-dt %>% dplyr::mutate(grup="constant")}  
   if (is.na(grups)) {grups="grup"}
   
   datatemp0<-dt %>% dplyr::select(c(variables[["camp"]],grups)) %>% as_tibble %>% rename_("grup"=grups)
@@ -2829,13 +2829,13 @@ criteris_exclusio_diagrama<-function(dt=dades,
   maco_criteris<-variables %>% 
     dplyr::select_("camp",criteris,ordre) %>%
     tidyr::unite_("filtres", c("camp", criteris),sep="") 
-  maco_criteris<-maco_noms %>% cbind(maco_criteris) %>% mutate(tipus_cri="pur")
+  maco_criteris<-maco_noms %>% cbind(maco_criteris) %>%dplyr::mutate(tipus_cri="pur")
   
   
   maco_miss<-variables %>% 
     dplyr::select_("camp",ordre) %>%
     dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select_("filtres",ordre)
-  maco_miss<-maco_noms %>% cbind(maco_miss) %>% mutate(tipus_cri="missing")
+  maco_miss<-maco_noms %>% cbind(maco_miss) %>% dplyr::mutate(tipus_cri="missing")
   
   maco_criteris<-maco_criteris %>% rbind(maco_miss)%>%dplyr::arrange_(ordre)
 
@@ -2852,13 +2852,13 @@ criteris_exclusio_diagrama<-function(dt=dades,
     #i<-1
     
     kk<-maco_criteris[i,]$filtres
-    datatemp2<-datatemp2 %>%mutate(dumy=(if_else(eval(parse(text=kk)),1,0,missing =NULL)),
+    datatemp2<-datatemp2 %>%dplyr::mutate(dumy=(if_else(eval(parse(text=kk)),1,0,missing =NULL)),
                                    dumy = replace_na(dumy, 0))
     
     dades_criteris<-datatemp2 %>% 
       dplyr::filter_(as.character(maco_criteris[i,]$filtres)) %>% 
-      group_by(grup) %>% summarise (n=n(),any(n)) %>% mutate(criteri=i) %>% 
-      mutate(camp=maco_criteris[i,]$camp,
+      dplyr::group_by(grup) %>% summarise (n=n(),any(n)) %>% mutate(criteri=i) %>% 
+      dplyr::mutate(camp=maco_criteris[i,]$camp,
              filtre_tipus=maco_criteris[i,]$tipus_cri,
              filtre_forma=maco_criteris[i,]$filtres
       ) %>% 
@@ -2882,19 +2882,19 @@ criteris_exclusio_diagrama<-function(dt=dades,
   # Expandir per tenir una fila per criteri amb valor 
   taula_criteris<-num_criteris %>% 
     expand(grup,camp,filtre_tipus) %>% 
-    left_join(num_criteris,by=c("grup","camp","filtre_tipus"))%>%dplyr::arrange_("criteri")
+    dplyr::left_join(num_criteris,by=c("grup","camp","filtre_tipus"))%>%dplyr::arrange_("criteri")
   
   
     # Netejar aquelles files que no tinguin cap 0 en cap dels grups 
   temp<-taula_criteris %>% mutate(n=ifelse(is.na(n),0,n)) %>% 
-    group_by(camp,filtre_tipus) %>% 
-    summarise(suma_n=sum(n))
+    dplyr::group_by(camp,filtre_tipus) %>% 
+    dplyr::summarise(suma_n=sum(n))
   
   taula_criteris<-taula_criteris %>% 
-    left_join(temp,by=c("camp","filtre_tipus")) %>% 
-    filter(suma_n!=0) %>% 
+    dplyr::left_join(temp,by=c("camp","filtre_tipus")) %>% 
+    dplyr::filter(suma_n!=0) %>% 
     dplyr::select(-suma_n) %>% 
-    mutate (n=ifelse(is.na(n),0,n))
+    dplyr::mutate (n=ifelse(is.na(n),0,n))
   
   
 
@@ -2902,16 +2902,16 @@ criteris_exclusio_diagrama<-function(dt=dades,
   # Etiquetes dels criteris d'inclusio 
   
   if (etiquetes=="NA") {
-    variables<-variables %>% mutate(etiquetes=paste0(camp,":",variables[[criteris]]))
-    variables<-variables %>% mutate(etiquetes=stringr::str_remove_all(etiquetes,"'"))}
+    variables<-variables %>% dplyr::mutate(etiquetes=paste0(camp,":",variables[[criteris]]))
+    variables<-variables %>% dplyr::mutate(etiquetes=stringr::str_remove_all(etiquetes,"'"))}
   
   etiquetes_sym=rlang::sym(etiquetes)
-  if (etiquetes!="NA") {variables<-variables %>% mutate(etiquetes=!!etiquetes_sym)}
+  if (etiquetes!="NA") {variables<-variables %>%dplyr:: mutate(etiquetes=!!etiquetes_sym)}
   
-  
-  taula_etiquetes<- variables %>% dplyr::select_("camp",etiquetes) %>% rename_("etiqueta_exclusio"=etiquetes)
-  taula_criteris<-taula_criteris %>% left_join(taula_etiquetes,by="camp")
-  taula_criteris<-taula_criteris %>% mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
+  taula_etiquetes<- variables %>%dplyr::select(camp,etiquetes) %>%dplyr:: rename(etiqueta_exclusio=etiquetes)
+  #taula_etiquetes<- variables %>% dplyr::select_("camp",etiquetes) %>%dplyr:: rename_("etiqueta_exclusio"=etiquetes)
+  taula_criteris<-taula_criteris %>% dplyr::left_join(taula_etiquetes,by="camp")
+  taula_criteris<-taula_criteris %>% dplyr::mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
   
   
   #[AQUI!]#Creem els parametres que posramen ald Diagrammer!i si tenim un factor, 
@@ -2940,10 +2940,10 @@ criteris_exclusio_diagrama<-function(dt=dades,
   datatemp<-datatemp %>% dplyr::filter(eval(parse(text=filtre_total)))
   
   #  Generar Etiquetes: Pob inicial i final x grup 
-  -------------------------------------------------------------------------------#
-  pob<-datatemp0%>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
-  pob.i<-datatemp0 %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
-  pob.f<-datatemp %>% group_by(grup) %>% summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  #-------------------------------------------------------------------------------#
+  pob<-datatemp0%>% dplyr::summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  pob.i<-datatemp0 %>%dplyr:: group_by(grup) %>% dplyr::summarise (n=n()) %>% dplyr::select(n) %>% as.vector
+  pob.f<-datatemp %>% dplyr::group_by(grup) %>% dplyr::summarise (n=n()) %>% dplyr::select(n) %>% as.vector
   #-------------------------------------------------------------------------------#
   
   n_pob1<-c(pob.i$n[1],pob.f$n[1])
