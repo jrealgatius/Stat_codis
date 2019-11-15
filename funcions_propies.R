@@ -2293,16 +2293,17 @@ agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=
 ###################     LLANCO PROBLEMES LONG + UNA DATA INDEX / BD ab data index, finestra temporal -> 
 #                       RETORNO UNA TAULA AGREGADA / TAMBÉ POSO LA TAULA CATALEG
 
-agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="DG.",camp_agregador="agr") {
+agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="DG.",camp_agregador="agr",keep.code=F) {
 
   # dt=HISTORIC_EVENTOS_TOTAL
   # bd.dindex =IDS_CIPS
   # dt.agregadors=dt_cataleg
-  # finestra.dies=c(-Inf,0)
-  # finestra.dies = c(0,+Inf)
+  # finestra.dies=c(0,+Inf)
   # prefix = "DG."
   # camp_agregador = "Agrupador1"
-
+  # keep.code=F
+  
+  
   ## afegir en dataindex de BDINDEX si bd.dindex<>""
   #### Afegir + data index (+dtindex) en l'historic de problemes
   
@@ -2320,7 +2321,6 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
   
   dt<-dt %>% as_tibble()
     
-
   ##### filtrar per intervals de dates 
   dt<-dt %>% dplyr::filter(dat_num>= dtindex_num +finestra.dies[1] & 
                              dat_num<= dtindex_num +finestra.dies[2])
@@ -2338,7 +2338,6 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
     filter(!is.na(agr))
 
   ## Capturar agregador 
-  
   dt.temp<-dt %>% 
     # camps mínims que necessito per agregar 
     dplyr::select(c(idp,dtindex,cod,dat)) %>%                                             # Selecciono camps mínims
@@ -2359,8 +2358,17 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
   
   names(dt.agregat) <- sub("agr.", prefix, names(dt.agregat))   # Afegir prefix en noms de variables 
 
-  dt.agregat
+  # Si MANTING codi (cod)
+  if (keep.code) {
+  dt.agregat_cod<-dt.temp %>% 
+    dplyr::select(idp,agr,cod,dtindex) %>%  # Selecciono agregador i data
+    # RESHAPE per agregador i em quedo la data
+    tidyr::spread(agr,cod,sep="_")                                                        # Reshape
+  names(dt.agregat_cod) <- sub("agr_", "cod_", names(dt.agregat_cod)) 
+  dt.agregat<-dt.agregat %>% left_join(dt.agregat_cod,by=c("idp","dtindex"))
+  }
   
+  dt.agregat
   
 }
 
