@@ -1459,14 +1459,15 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 }
 
 # Dibuixa mapa temporal univariant per verificar solapaments
-MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf,add_point=NA) {
+MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf,add_point=NA,add_final=NA) {
   
-  # dades=farmacs_dt_sense_gaps %>% filter(GRUP=="IDPP4")
-  # datainicial="dat"
-  # datafinal="datafi"
+  # dades=dades %>% filter(situacio=="T" | situacio=="D")
+  # datainicial="dtindex"
+  # datafinal="datafi_seguiment"
   # id="idp"
-  # Nmostra=2
+  # Nmostra=10
   # add_point=NA
+  # add_final="situacio"
   
   # Conversió a Sym per evaluació  
   datainicial<-rlang::sym(datainicial)
@@ -1484,7 +1485,7 @@ MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",i
   
   # Gráfico el tema
   figura<- ggplot2::ggplot(dades,ggplot2::aes(x =dia0,y =!!id_sym))+
-    ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id_sym, yend = !!id_sym),arrow =  ggplot2::arrow(length = ggplot2::unit(0.03, "npc"))) +
+    ggplot2::geom_segment(ggplot2::aes(x =dia0, xend=diaf, y =!!id_sym, yend = !!id_sym),arrow =  ggplot2::arrow(length = ggplot2::unit(0.01, "npc"))) +
     ggplot2::geom_point(ggplot2::aes(dia0, !!id_sym)) + 
     ggplot2::geom_text(vjust = -0.5, hjust=0, size = 3, ggplot2::aes(x =dia0, y = !!id_sym,label = paste(round(days_duration, 2), "days")))+
     ggplot2::scale_colour_brewer(palette = "Set1")+
@@ -1495,10 +1496,13 @@ MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",i
       geom_point(aes(!!rlang::sym(add_point),!!id_sym),size=3,shape=8,colour="red") +
       geom_text(vjust = -0.5, hjust=0, size = 2,aes(x =!!rlang::sym(add_point), y = !!id_sym,label = add_point)) 
     }
-  
-  figura
-  
-  
+
+  if (!is.na(add_final)) {
+    figura<- figura + ggplot2::geom_point(ggplot2::aes(diaf, !!id_sym,colour=!!rlang::sym(add_final) %>% as.factor())) 
+    }
+
+figura 
+
 }
 
 
