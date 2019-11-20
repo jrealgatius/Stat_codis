@@ -966,7 +966,7 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE")
     # paste0(c(x,ajust),collapse = " + ")  Per fer formula amb variables d'ajust
       
     pepe<-paste0(outcome,"~",x) 
-    resum<-with(tempData,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
+    resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
    
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% 
