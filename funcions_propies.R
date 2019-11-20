@@ -958,11 +958,13 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE")
   # x="IMC_cat4"
   
   # Outcome es factor?
-  outcome_es_factor<-data_long[[outcome]] %>% class=="factor" | data_long[[outcome]] %>% class=="character"
+  outcome_es_factor<-dt$data[[outcome]] %>% class()=="factor" | dt$data[[outcome]] %>% class=="character"
   
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
-    
+  
+    # paste0(c(x,ajust),collapse = " + ")  Per fer formula amb variables d'ajust
+      
     pepe<-paste0(outcome,"~",x) 
     resum<-with(tempData,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
    
