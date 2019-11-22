@@ -1062,7 +1062,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
   
   # Només en GLM afegir mitjana estimada per categoria 
-  if (es_factor & outcome_es_factor==F) { 
+  if (outcome_es_factor==F) { 
     resumtotal<-resumtotal %>% 
       mutate (beta0=resumtotal$Estimate[1],estimate=ifelse(is.na(Estimate),0,Estimate)) %>%  
       mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
@@ -1077,8 +1077,9 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   
   # dt=mice::as.mids(dades)
   # outcome="HBA1C.dif324m"
-  # x="grup"
+  # x="grup_IDPP4"
   # v.ajust=c("sexe","edat","qmedea")
+  
   
   ### Hi ha variables d'ajust genero formula llista
   if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
@@ -1125,7 +1126,7 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
   
   # Només en GLM calcular la mitjana estimada per categoria 
-  if (es_factor & outcome_es_factor==F) { 
+  if (outcome_es_factor==F) { 
     resumtotal<-resumtotal %>% mutate (beta0=resumtotal$estimate[1],estimate=ifelse(is.na(estimate),0,estimate)) %>%  
       mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
     }
@@ -1272,7 +1273,7 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   
   # dades_long=dades
   # outcome="PESO.dif324m"
-  # grups="grup"
+  # grups="grup_IDPP4"
   # v.ajust=c("sexe","edat")
   
   
@@ -1283,6 +1284,7 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   if (!outcome_es_factor) {
     
     # Outcome continu 
+    
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
       transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - 1.97*`std.error`,Lsup=estimate + 1.97*`std.error`,p.value, mean)
@@ -1317,13 +1319,8 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   # Juntar-ho tot
   dt_estimaciones_resumen<-dt_estimaciones1 %>% bind_rows(dt_estimaciones2) %>%  bind_rows(dt_estimaciones3) %>%  bind_rows(dt_estimaciones4)
   # Descriptivo datos completos
-  descriptivo_completos<-compareGroups::descrTable(paste0(c(grups,outcome),collapse = "~"),data=dades_long %>% filter(.imp==0),show.p.overall = F,show.n = T)
-  # Descriptivo datos imputados:
-  descriptivo_imputados<-compareGroups::descrTable(paste0(c(grups,outcome),collapse = "~"),data=dades_long %>% filter(.imp>0),show.p.overall = F,show.n = T)
-  
-  
-  list(estimaciones=dt_estimaciones_resumen,descriptivo_completos=descriptivo_completos,descriptivo_imputados=descriptivo_imputados)
-  
+
+  dt_estimaciones_resumen
   
 }
 
