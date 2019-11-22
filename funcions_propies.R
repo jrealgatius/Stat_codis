@@ -62,6 +62,61 @@ directori_treball<-function(subdirectori,directori) {
 
 }
 
+# Actualitza conductor amb noves variables en dades 
+
+ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
+  
+  # taulavariables="VARIABLES_R3b.xlsx"  
+  # d=dades
+  
+  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+  variables<-readxl::read_excel(taulavariables)
+  variables[is.na(variables)]<-0
+  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+  
+  #----------------------------------------------------------#
+  var_dades<-names(dades)%>% as_tibble() %>% select("camp"=value) %>%mutate("descripcio"=camp)
+  var_conductor<-variables["camp"]
+  #----------------------------------------------------------#
+  #var_dades
+  #var_conductor
+  #----------------------------------------------------------#
+  var_afegir<-var_dades %>% anti_join(var_conductor,by="camp")
+  #var_afegir
+  #----------------------------------------------------------#
+  # afegeix al final 
+  #variables2<-variables %>% bind_rows(var_afegir)
+  #----------------------------------------------------------#
+  wb<-loadWorkbook("VARIABLES_R3b.xlsx")
+  n<-(readWorkbook(wb,sheet="Full1")[,1] %>% length())+2
+  n2<-colnames(variables)%>% length()
+  #----------------------------------------------------------#
+  #var0<-var_afegir%>%as.data.frame
+  var1<-var_afegir[1]
+  var2<-var_afegir[2]
+  #----------------------------------------------------------#
+  var1 <- var1[['camp']]
+  var2 <- var2[['descripcio']]
+  #----------------------------------------------------------#
+  negStyle <- createStyle(fontColour = "#9C0006", bgFill = "#FFC7CE")
+  posStyle <- createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
+  #----------------------------------------------------------#
+  writeData(wb, sheet="Full1",var1,xy = c("A", n))
+  writeData(wb, sheet="Full1",var2,xy = c("B", n))
+  
+  conditionalFormatting(wb, sheet="Full1", cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
+  
+  #
+  saveWorkbook(wb, file = "VARIABLES_R3c.xlsx", overwrite = TRUE)
+  openXL("VARIABLES_R3c.xlsx")
+  
+  
+  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+  
+  
+  
+}
+
 
 # generar_mostra_fitxers()  ----------------------
 
