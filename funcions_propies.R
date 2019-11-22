@@ -1030,13 +1030,24 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
   
   # Outcome es factor?
+<<<<<<< HEAD
   outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
+=======
+  outcome_es_factor<-dt$data[[outcome]] %>% class()=="factor" | dt$data[[outcome]] %>% class=="character"
+>>>>>>> 65022cb0db518f2d778d6c6bd00b5e5f52871a23
   
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
   
+<<<<<<< HEAD
     # pepe<-paste0(outcome,"~",x) 
     resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
+=======
+    # paste0(c(x,ajust),collapse = " + ")  Per fer formula amb variables d'ajust
+      
+    pepe<-paste0(outcome,"~",x) 
+    resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
+>>>>>>> 65022cb0db518f2d778d6c6bd00b5e5f52871a23
    
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% 
