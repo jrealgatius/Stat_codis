@@ -66,15 +66,18 @@ directori_treball<-function(subdirectori,directori) {
 
 ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   
-  taulavariables="variables_metplus_test.xlsx"
-  d=dades
+  # taulavariables="variables_metplus_test.xlsx"
+  # d=dades
   
-  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+  # Llegir conductor
   variables<-readxl::read_excel(taulavariables)
-  variables[is.na(variables)]<-0
-  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
 
-  # posició de camp i descripció
+  # Si el format es xls exportar a xls cambiar de format
+  if (readxl::excel_format(taulavariables)=="xls") {
+    taulavariables<-stringr::str_replace(taulavariables,"xls","xlsx")
+    openxlsx::write.xlsx(variables,taulavariables)}
+  
+  # Guardar posició de camp i descripció
   posicio_camp <- which(names(variables) == "camp")
   posicio_desc <- which(names(variables) == "descripcio")
   
@@ -91,7 +94,8 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   #----------------------------------------------------------#
   # afegeix al final 
   #variables2<-variables %>% bind_rows(var_afegir)
-  #----------------------------------------------------------#
+ 
+   #----------------------------------------------------------#
   wb<-openxlsx::loadWorkbook(taulavariables)
   n<-(openxlsx::readWorkbook(wb,sheet=1)[,1] %>% length())+2
   n2<-colnames(variables)%>% length()
@@ -113,8 +117,8 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   
   #
  
-  openxlsx::saveWorkbook(wb, file = "VARIABLES_actualitzat.xlsx", overwrite = TRUE)
-  openxlsx::openXL("VARIABLES_actualitzat.xlsx")
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  openxlsx::openXL(taulavariables)
 
   
 }
