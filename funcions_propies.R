@@ -66,17 +66,22 @@ directori_treball<-function(subdirectori,directori) {
 
 ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   
-  # taulavariables="VARIABLES_R3b.xlsx"  
-  # d=dades
+  taulavariables="variables_metplus_test.xlsx"
+  d=dades
   
   #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
   variables<-readxl::read_excel(taulavariables)
   variables[is.na(variables)]<-0
   #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
+
+  # posició de camp i descripció
+  posicio_camp <- which(names(variables) == "camp")
+  posicio_desc <- which(names(variables) == "descripcio")
   
   #----------------------------------------------------------#
   var_dades<-names(dades)%>% as_tibble() %>% select("camp"=value) %>%mutate("descripcio"=camp)
   var_conductor<-variables["camp"]
+
   #----------------------------------------------------------#
   #var_dades
   #var_conductor
@@ -87,8 +92,8 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   # afegeix al final 
   #variables2<-variables %>% bind_rows(var_afegir)
   #----------------------------------------------------------#
-  wb<-loadWorkbook("VARIABLES_R3b.xlsx")
-  n<-(readWorkbook(wb,sheet="Full1")[,1] %>% length())+2
+  wb<-openxlsx::loadWorkbook(taulavariables)
+  n<-(openxlsx::readWorkbook(wb,sheet=1)[,1] %>% length())+2
   n2<-colnames(variables)%>% length()
   #----------------------------------------------------------#
   #var0<-var_afegir%>%as.data.frame
@@ -98,22 +103,19 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   var1 <- var1[['camp']]
   var2 <- var2[['descripcio']]
   #----------------------------------------------------------#
-  negStyle <- createStyle(fontColour = "#9C0006", bgFill = "#FFC7CE")
-  posStyle <- createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
+  # negStyle <- openxlsx::createStyle(fontColour = "#9C0006", bgFill = "#FFC7CE")
+  # posStyle <- openxlsx::createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
   #----------------------------------------------------------#
-  writeData(wb, sheet="Full1",var1,xy = c("A", n))
-  writeData(wb, sheet="Full1",var2,xy = c("B", n))
-  
-  conditionalFormatting(wb, sheet="Full1", cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
+  openxlsx::writeData(wb, sheet=1,var1,startCol = posicio_camp,startRow = n)
+  openxlsx::writeData(wb, sheet=1,var2,startCol = posicio_desc,startRow = n)
+
+  # openxlsx::conditionalFormatting(wb, sheet=1, cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
   
   #
-  saveWorkbook(wb, file = "VARIABLES_R3c.xlsx", overwrite = TRUE)
-  openXL("VARIABLES_R3c.xlsx")
-  
-  
-  #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#
-  
-  
+ 
+  openxlsx::saveWorkbook(wb, file = "VARIABLES_actualitzat.xlsx", overwrite = TRUE)
+  openxlsx::openXL("VARIABLES_actualitzat.xlsx")
+
   
 }
 
