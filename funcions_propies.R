@@ -1013,11 +1013,11 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 #  EXTREU COEFICIENTS glm, IC95 , p valors  GLM a outcome, X, i llista de v.ajust 
 extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
-  # dt=dades %>% filter(.imp==0)
+  # dt=dades_long %>% filter(.imp==0)
   # outcome="HBA1C.dif324m.cat"
   # outcome="HBA1C.dif324m"
   # x="grup"
-  # v.ajust=c("sexe","edat")
+  # v.ajust=""
   
   # Número de categories de X
   Ncat.x<-sum(table(dt[x])!=0)
@@ -1037,7 +1037,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
     
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% as_tibble() %>% 
-      mutate(OR=Estimate %>% exp,
+      mutate(OR=Estimate %>% exp(),
              Linf=(Estimate-(1.97*`Std. Error`)) %>% exp(),
              Lsup=(Estimate+(1.97*`Std. Error`)) %>% exp())
     
@@ -1051,8 +1051,8 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% as_tibble() %>% 
       mutate(Beta=Estimate,
-             Linf=(Estimate-(1.97*`Std. Error`)) %>% exp(),
-             Lsup=(Estimate+(1.97*`Std. Error`)) %>% exp())
+             Linf=(Estimate-(1.97*`Std. Error`)) ,
+             Lsup=(Estimate+(1.97*`Std. Error`)))
   }
   
   # Si X es factor afegir cat de ref + mean 
@@ -1278,14 +1278,13 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
   
   # dades_long=dades
-  # outcome="PESO.dif324m"
-  # grups="grup_IDPP4"
+  # outcome="HBA1C.dif324m"
+  # grups="grup_ISGLT2"
   # v.ajust=c("sexe","edat")
-  
-  
+  # v.ajust=vector_ajust
+
   # Outcome es factor?
   outcome_es_factor<-any(dades_long[[outcome]] %>% class() %in% c("character","factor"))
-  
   
   if (!outcome_es_factor) {
     
@@ -1293,10 +1292,10 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
     
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
-      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - 1.97*`std.error`,Lsup=estimate + 1.97*`std.error`,p.value, mean)
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
     
     dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
-      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - 1.97*`std.error`,Lsup=estimate + 1.97*`std.error`,p.value, mean)
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
     
     dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
       transmute (datos="Completos",type="Adjusted",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
