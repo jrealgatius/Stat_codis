@@ -124,6 +124,73 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
 }
 
 
+ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc=0,my.vec=c(" "," ")) {
+  
+  #------------------------------------#
+  #lloc=0
+  #my.vec=c("ZZ","ZZ")
+  #taulavariables="VARIABLES_R3b.xlsx"
+  #d=dades
+  #------------------------------------#
+  
+  # Llegir conductor
+  variables<-readxl::read_excel(taulavariables)
+  
+  # Si el format es xls exportar a xls cambiar de format
+  if (readxl::excel_format(taulavariables)=="xls") {
+    taulavariables<-stringr::str_replace(taulavariables,"xls","xlsx")
+    openxlsx::write.xlsx(variables,taulavariables)}
+  
+  # Guardar posició de camp i descripció
+  posicio_camp <- which(names(variables) == "camp")
+  posicio_desc <- which(names(variables) == "descripcio")
+  #----------------------------------------------------------#
+  var_dades<-names(dades)%>% as_tibble() %>% select("camp"=value) %>%mutate("descripcio"=camp)
+  var_conductor<-variables["camp"]
+  #----------------------------------------------------------#
+  #var_dades
+  #var_conductor
+  #----------------------------------------------------------#
+  var_afegir<-var_dades %>% anti_join(var_conductor,by="camp")
+  #var_afegir
+  #----------------------------------------------------------#
+  # afegeix al final 
+  #----------------------------------------------------------#
+  wb<-openxlsx::loadWorkbook(taulavariables)
+  n<-(openxlsx::readWorkbook(wb,sheet=1)[,1] %>% length())+2
+  n2<-colnames(variables)%>% length()
+  #----------------------------------------------------------#
+  var1<-var_afegir[1]
+  var2<-var_afegir[2]
+  #----------------------------------------------------------#
+  var1 <- var1[['camp']]
+  var2 <- var2[['descripcio']]
+  #----------------------------------------------------------#
+  posStyle <- openxlsx::createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
+  #----------------------------------------------------------#
+  openxlsx::writeData(wb, sheet=1,var1,startCol = posicio_camp,startRow = n)
+  openxlsx::writeData(wb, sheet=1,var2,startCol = posicio_desc,startRow = n)
+  openxlsx::conditionalFormatting(wb, sheet=1, cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
+  #----------------------------------------------------------#
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  variables2<-readxl::read_excel(taulavariables)
+  #----------------------------------------------------------# 
+  x<- rep(" ", times = n2-length(my.vec))
+  my.vec2    <- c(my.vec,x)
+  #----------------------------------------------------------#
+  new.data <- rbind(variables2[1:(lloc), ], my.vec2, variables2[(lloc+1):length(variables2[,1]),])
+  openxlsx::writeData(wb,sheet=1,new.data,startCol = 1,startRow = 1)
+  if (lloc==0) {
+    openxlsx::writeData(wb,sheet=1,variables2,startCol = 1,startRow = 1)
+  }
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  openxlsx::openXL(taulavariables)
+}
+
+
+
+
+
 # generar_mostra_fitxers()  ----------------------
 
 # Llegir tots els fitxers RDS dins d'un directori i generar una mostra aleatoria i salvar-lo en un directori "mostra"
