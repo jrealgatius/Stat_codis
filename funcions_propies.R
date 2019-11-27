@@ -62,6 +62,67 @@ directori_treball<-function(subdirectori,directori) {
 
 }
 
+# Actualitza conductor amb noves variables en dades 
+
+ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
+  
+  # taulavariables="variables_metplus_test.xlsx"
+  # d=dades
+  
+  # Llegir conductor
+  variables<-readxl::read_excel(taulavariables)
+
+  # Si el format es xls exportar a xls cambiar de format
+  if (readxl::excel_format(taulavariables)=="xls") {
+    taulavariables<-stringr::str_replace(taulavariables,"xls","xlsx")
+    openxlsx::write.xlsx(variables,taulavariables)}
+  
+  # Guardar posició de camp i descripció
+  posicio_camp <- which(names(variables) == "camp")
+  posicio_desc <- which(names(variables) == "descripcio")
+  
+  #----------------------------------------------------------#
+  var_dades<-names(dades)%>% as_tibble() %>% select("camp"=value) %>%mutate("descripcio"=camp)
+  var_conductor<-variables["camp"]
+
+  #----------------------------------------------------------#
+  #var_dades
+  #var_conductor
+  #----------------------------------------------------------#
+  var_afegir<-var_dades %>% anti_join(var_conductor,by="camp")
+  #var_afegir
+  #----------------------------------------------------------#
+  # afegeix al final 
+  #variables2<-variables %>% bind_rows(var_afegir)
+ 
+   #----------------------------------------------------------#
+  wb<-openxlsx::loadWorkbook(taulavariables)
+  n<-(openxlsx::readWorkbook(wb,sheet=1)[,1] %>% length())+2
+  n2<-colnames(variables)%>% length()
+  #----------------------------------------------------------#
+  #var0<-var_afegir%>%as.data.frame
+  var1<-var_afegir[1]
+  var2<-var_afegir[2]
+  #----------------------------------------------------------#
+  var1 <- var1[['camp']]
+  var2 <- var2[['descripcio']]
+  #----------------------------------------------------------#
+  # negStyle <- openxlsx::createStyle(fontColour = "#9C0006", bgFill = "#FFC7CE")
+  # posStyle <- openxlsx::createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
+  #----------------------------------------------------------#
+  openxlsx::writeData(wb, sheet=1,var1,startCol = posicio_camp,startRow = n)
+  openxlsx::writeData(wb, sheet=1,var2,startCol = posicio_desc,startRow = n)
+
+  # openxlsx::conditionalFormatting(wb, sheet=1, cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
+  
+  #
+ 
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  openxlsx::openXL(taulavariables)
+
+  
+}
+
 
 # generar_mostra_fitxers()  ----------------------
 
@@ -949,49 +1010,128 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
   
 }
 
-#  GLM (Logistic o Lineal) dades imputades -------------------- 
-## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
-extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE") {
+#  EXTREU COEFICIENTS glm, IC95 , p valors  GLM a outcome, X, i llista de v.ajust 
+extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
-  # dt=tempData
-  # outcome="canvi612M.glicadaCAT2"
-  # x="IMC_cat4"
+  # dt=dades_long %>% filter(.imp==0)
+  # outcome="MPR.TX.cat"
+  # outcome="HBA1C.dif324m"
+  # x="grup"
+  # v.ajust=""
+
+  outcome_sym<-rlang::sym(outcome)
+  
+  # Número de categories de X
+  Ncat.x<-sum(table(dt[x])!=0)
+  if (is.numeric(dt[[x]])) Ncat.x=1
+  
+  ### Hi ha variables d'ajust genero formula llista
+  if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
+  if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
   
   # Outcome es factor?
-  outcome_es_factor<-dt$data[[outcome]] %>% class()=="factor" | dt$data[[outcome]] %>% class=="character"
+  outcome_es_factor<-any(dt[[outcome]] %>% class() %in% c("character","factor"))
+
+  # Si Outcome (Y) es factor --> glm-Logistica
+  if (outcome_es_factor) {
+
+    # Recode outcome Yes and Si --> 1 
+    # if (any(dt[[outcome]] %in% c("Yes","No","Si"))) {dt<-dt %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
+    
+    # Modelo
+    resum<-glm(eval(parse(text=pepe)),family = binomial(link="logit"),data=dt) %>% summary %>% coef()
+    
+    resum_model<-tibble(categoria=row.names(resum)) %>% 
+      cbind(resum) %>% as_tibble() %>% 
+      mutate(OR=Estimate %>% exp(),
+             Linf=(Estimate-(1.97*`Std. Error`)) %>% exp(),
+             Lsup=(Estimate+(1.97*`Std. Error`)) %>% exp())
+    
+    }
   
+  # Si Outcome (Y) es numerica --> glm-lineal 
+  if (!outcome_es_factor) {
+    
+    resum<-glm(as.formula(pepe),family = gaussian, data= dt) %>% summary %>% coef()
+    
+    resum_model<-tibble(categoria=row.names(resum)) %>% 
+      cbind(resum) %>% as_tibble() %>% 
+      mutate(Beta=Estimate,
+             Linf=(Estimate-(1.97*`Std. Error`)) ,
+             Lsup=(Estimate+(1.97*`Std. Error`)))
+  }
+  
+  # Si X es factor afegir cat de ref + mean 
+  es_factor<- any(dt[[x]] %>% class() %in% c("character","factor"))
+  if (es_factor) {
+    resumtotal<-tibble(categoria=row.names(resum)[1:Ncat.x],outcome=outcome) %>% 
+      add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
+  }
+  # Si no es factor
+  if (!es_factor) {resumtotal<-tibble(categoria=row.names(resum),outcome=outcome) }
+  
+  # Afegir categoria 
+  resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
+  
+  # Només en GLM afegir mitjana estimada per categoria 
+  if (outcome_es_factor==F) { 
+    resumtotal<-resumtotal %>% 
+      mutate (beta0=resumtotal$Estimate[1],estimate=ifelse(is.na(Estimate),0,Estimate)) %>%  
+      mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
+  }
+  
+  resumtotal %>% head(Ncat.x+1)
+}
+
+#  GLM (Logistic o Lineal) dades imputades -------------------- 
+## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
+extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="") {
+  
+  # dt=mice::as.mids(dades)
+  # outcome="MPR.TX.cat"
+  # x="grup_IDPP4"
+  # v.ajust=c("sexe","edat","qmedea")
+  
+  outcome_sym<-rlang::sym(outcome)
+  
+  ### Hi ha variables d'ajust genero formula llista
+  if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
+  if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
+  
+  # Outcome es factor?
+  outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
+
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
   
-    # paste0(c(x,ajust),collapse = " + ")  Per fer formula amb variables d'ajust
-      
-    pepe<-paste0(outcome,"~",x) 
-    resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% pool %>% summary 
-   
+    # Recode outcome Yes and Si --> 1 ¿NO SE SI FUNCIONA? 
+    # if (any(dt$data[[outcome]] %in% c("Yes","No","Si"))) {dt$data<-dt$data %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
+    
+    resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
+
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% 
       mutate(OR=estimate %>% exp,
-             Linf=(estimate-std.error) %>% exp,
-             Lsup=(estimate+std.error) %>% exp)
-      
+             Linf=(estimate-(1.97*std.error)) %>% exp,
+             Lsup=(estimate+(1.97*std.error)) %>% exp)
       }
   
   # Si outcome (Y) es numeric --> GLM lineal
   if (!outcome_es_factor) {
     
-    pepe<-paste0(outcome,"~",x) 
+    # pepe<-paste0(outcome,"~",x) 
     model_mi<-with(dt,lm(eval(parse(text=pepe))))
     resum<-summary(mice::pool(model_mi))
     resum_model<-tibble(categoria=row.names(resum)) %>% cbind(resum)
   }
   
-  
   # Si X  es cat afegir categoria de referencia
-  es_factor<- data_long[[x]] %>% class=="factor" | data_long[[x]] %>% class=="character"
-  num_categories<-data_long[[x]] %>%  table %>% length
+  es_factor<- any(dt$data[[x]] %>% class() %in% c("character","factor"))
+  # Número de categories de X i selecciono files de X
+  if (is.numeric(dt$data[[x]])) Ncat.x=1 else Ncat.x<-sum(table(dt$data[x])!=0)
   
   if (es_factor) {
-    resumtotal<-tibble(categoria=row.names(resum),outcome=outcome) %>% 
+    resumtotal<-tibble(categoria=row.names(resum)[1:Ncat.x],outcome=outcome) %>% 
       add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
   }
   
@@ -1002,15 +1142,14 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE")
   resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
   
   # Només en GLM calcular la mitjana estimada per categoria 
-  if (es_factor & outcome_es_factor==F) { 
+  if (outcome_es_factor==F) { 
     resumtotal<-resumtotal %>% mutate (beta0=resumtotal$estimate[1],estimate=ifelse(is.na(estimate),0,estimate)) %>%  
       mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
     }
   
   # Seleccionar columnes
-  
-  resumtotal
-  
+  resumtotal %>% head(Ncat.x+1)
+
 }
 
 #  Coeficients GLM(lineal/logistica) MICE estratificats  ---------------------
@@ -1140,6 +1279,63 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
   # Retorno dades 
   
   as_tibble(dades_select)
+  
+}
+
+
+# Funció que retorna summari (Beta/OR , IC95%, mean) amb dades imputades i completes crudes i ajustades d'un outcome en relació a un grup
+# Objecte dades_long es fitxer de dades amb dades completes (.imp==0) + imputades (.imp>0)
+extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
+  
+  # dades_long=dades
+  # outcome="MPR.TX.cat"
+  # grups="grup"
+  # v.ajust=c("sexe","edat")
+  # v.ajust=vector_ajust
+
+  # Outcome es factor?
+  outcome_es_factor<-any(dades_long[[outcome]] %>% class() %in% c("character","factor"))
+  
+  if (!outcome_es_factor) {
+    
+    # Outcome continu/númeric
+    
+    # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
+    dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
+    
+    dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
+    
+    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+      transmute (datos="Completos",type="Adjusted",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
+    
+    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="") %>% 
+      transmute (datos="Completos",type="Crudas",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
+    
+  }
+  
+  if (outcome_es_factor) {
+    # Outcome categoric
+    dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value)
+    
+    dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value)
+    
+    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+      transmute (datos="Completos",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
+    
+    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="") %>% 
+      transmute (datos="Completos",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
+    
+  }
+  
+  # Juntar-ho tot
+  dt_estimaciones_resumen<-dt_estimaciones1 %>% bind_rows(dt_estimaciones2) %>%  bind_rows(dt_estimaciones3) %>%  bind_rows(dt_estimaciones4)
+  # Descriptivo datos completos
+
+  dt_estimaciones_resumen
   
 }
 
@@ -1461,7 +1657,7 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
 }
 
 # Dibuixa mapa temporal univariant per verificar solapaments
-MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=Inf,add_point=NA,add_final=NA) {
+MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",id="idp_temp", Nmostra=10,add_point=NA,add_final=NA,set_seed=123) {
   
   # dades=dades %>% filter(situacio=="T" | situacio=="D")
   # datainicial="dtindex"
@@ -1477,7 +1673,7 @@ MAP_ggplot_univariant<-function(dades=dt,datainicial="data",datafinal="datafi",i
   id_sym<-rlang::sym(id)
   
   # mostrejo
-  dades<-mostreig_ids(dt=dades,id=id,n_mostra = Nmostra)
+  dades<-mostreig_ids(dt=dades,id=id,n_mostra = Nmostra,set_seed=set_seed)
   
   # if (Nmostra!=Inf) id_sample<-dades %>% distinct(!!id) %>% sample_n(size=Nmostra)
   # dt<-id_sample %>% left_join(dt,by=quo_name(id)) # 
@@ -2301,13 +2497,13 @@ agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=
 
 agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATALEG,finestra.dies=c(-Inf,0),prefix="DG.",camp_agregador="agr",keep.code=F) {
 
-  # dt=HISTORIC_EVENTOS_TOTAL
-  # bd.dindex =IDS_CIPS
-  # dt.agregadors=dt_cataleg
+  # dt=dt_problemes
+  # bd.dindex =dt_dataindex
+  # dt.agregadors=conductor_cataleg
   # finestra.dies=c(0,+Inf)
   # prefix = "DG."
-  # camp_agregador = "Agrupador1"
-  # keep.code=F
+  # camp_agregador = "agr"
+  # keep.code=T
   
   
   ## afegir en dataindex de BDINDEX si bd.dindex<>""
@@ -2542,11 +2738,11 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
 #  Requereix dt=(idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
 agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F){
   
-  # dt=FX.FACTURATS_PRESCRITS
-  # finestra.dies = c(-Inf,+Inf)
-  # camp_agregador="GRUP"
-  # dt.agregadors = conductor_variables
-  # bd.dindex = "20171231"
+  # dt=dt_facturats
+  # finestra.dies = c(-365,0)
+  # camp_agregador="agr"
+  # dt.agregadors = dt_cataleg
+  # bd.dindex = dt_dataindex
   # prefix="FD."
   # agregar_data=T
   
@@ -2566,7 +2762,6 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   # Si no existeix agr el creo 
   if (!("agr" %in% colnames(dt))) { dt<-dt %>% mutate(agr=NA) }
   
-
   #### Filtrar dt  per finestra temporal i genero data i datafi
   print("Filtrant historic per finestra temporal i generant data i datafi")
   # Recode els numeros infinits
@@ -2574,13 +2769,22 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   finestra.dies=ifelse(finestra.dies==-Inf,-99999,finestra.dies)
   ##  
 
+  # Filtro missings en dtindex (Si no peta)
+  dt<-dt %>% filter(!is.na(dtindex))
   
-  # Elimino funcions de llibreria lubridate
-  
+  # Elimino funcions de llibreria lubridate / les torno a posar
+  # pepito<-dt %>% dplyr::mutate (
+  #   data=paste0(as.character(dat),"15") %>% as.Date('%Y%m%d'),    # Data arrodonida al dia 15
+  #   datafi=data+(env*30),                  # Genero data fi en funció dels envasos
+  #   dtindex=as.Date(dtindex,'%Y%m%d'))
+
   pepito<-dt %>% dplyr::mutate (
-    data=paste0(as.character(dat),"15") %>% as.Date('%Y%m%d'),    # Data arrodonida al dia 15
+    data=lubridate::ymd(paste0(as.character(dat),"15")),    # Data arrodonida al dia 15
     datafi=data+(env*30),                  # Genero data fi en funció dels envasos
-    dtindex=as.Date(dtindex,'%Y%m%d'))
+    dtindex=lubridate::ymd(dtindex)) 
+  
+  pepito <-pepito %>% as_tibble()
+
 
   # Estimo el nombre d'envasos de solapament per codi i agrego per codi diferent 
   print ("Estimo el nombre d'envasos de solapament per codi i agrego per codi diferent")
@@ -2690,7 +2894,7 @@ agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),
     dplyr::ungroup() 
     }
   
-  # Si s'ha d'agregar data agafo el minim
+  # Si s'ha d'agregar data agafo la data minima
   if(data!="NA") {
     paco<-dt %>% 
       dplyr::group_by(idp,dtindex,cod) %>%  # Agrupo per id 
@@ -4448,11 +4652,13 @@ comptar_valors<-function(dt=dadesevents,variables=c("EV.TER.ARTER_PERIF","EV.TER
 
 # mostreig_ids () Mostreja ids d'una base de dades  ---------------------
 
-mostreig_ids<-function(dt,id="idp",n_mostra=100) {
+mostreig_ids<-function(dt,id="idp",n_mostra=100,set_seed=123) {
   
   # n_mostra<-100
   # dt<-dades
   # id="idp"
+  
+  set.seed(set_seed)
   
   if (n_mostra!=Inf) { 
   
