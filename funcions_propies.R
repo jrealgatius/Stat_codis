@@ -123,6 +123,76 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   
 }
 
+<<<<<<< HEAD
+=======
+
+ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc=0,my.vec=c(" "," ")) {
+  
+  #------------------------------------#
+  #lloc=0
+  #my.vec=c("ZZ","ZZ")
+  #taulavariables="VARIABLES_R3b.xlsx"
+  #d=dades
+  #------------------------------------#
+  
+  # Llegir conductor
+  variables<-readxl::read_excel(taulavariables)
+  
+  # Si el format es xls exportar a xls cambiar de format
+  if (readxl::excel_format(taulavariables)=="xls") {
+    taulavariables<-stringr::str_replace(taulavariables,"xls","xlsx")
+    openxlsx::write.xlsx(variables,taulavariables)}
+  
+  # Guardar posició de camp i descripció
+  posicio_camp <- which(names(variables) == "camp")
+  posicio_desc <- which(names(variables) == "descripcio")
+  #----------------------------------------------------------#
+  var_dades<-names(dades)%>% as_tibble() %>% select("camp"=value) %>%mutate("descripcio"=camp)
+  var_conductor<-variables["camp"]
+  #----------------------------------------------------------#
+  #var_dades
+  #var_conductor
+  #----------------------------------------------------------#
+  var_afegir<-var_dades %>% anti_join(var_conductor,by="camp")
+  #var_afegir
+  #----------------------------------------------------------#
+  # afegeix al final 
+  #----------------------------------------------------------#
+  wb<-openxlsx::loadWorkbook(taulavariables)
+  n<-(openxlsx::readWorkbook(wb,sheet=1)[,1] %>% length())+2
+  n2<-colnames(variables)%>% length()
+  #----------------------------------------------------------#
+  var1<-var_afegir[1]
+  var2<-var_afegir[2]
+  #----------------------------------------------------------#
+  var1 <- var1[['camp']]
+  var2 <- var2[['descripcio']]
+  #----------------------------------------------------------#
+  posStyle <- openxlsx::createStyle(fontColour = "#006100", bgFill = "#C6EFCE")
+  #----------------------------------------------------------#
+  openxlsx::writeData(wb, sheet=1,var1,startCol = posicio_camp,startRow = n)
+  openxlsx::writeData(wb, sheet=1,var2,startCol = posicio_desc,startRow = n)
+  openxlsx::conditionalFormatting(wb, sheet=1, cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
+  #----------------------------------------------------------#
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  variables2<-readxl::read_excel(taulavariables)
+  #----------------------------------------------------------# 
+  x<- rep(" ", times = n2-length(my.vec))
+  my.vec2    <- c(my.vec,x)
+  #----------------------------------------------------------#
+  new.data <- rbind(variables2[1:(lloc), ], my.vec2, variables2[(lloc+1):length(variables2[,1]),])
+  openxlsx::writeData(wb,sheet=1,new.data,startCol = 1,startRow = 1)
+  if (lloc==0) {
+    openxlsx::writeData(wb,sheet=1,variables2,startCol = 1,startRow = 1)
+  }
+  openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
+  openxlsx::openXL(taulavariables)
+}
+
+
+
+
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
 
 # generar_mostra_fitxers()  ----------------------
 
@@ -1014,12 +1084,19 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
   # dt=dades_long %>% filter(.imp==0)
+<<<<<<< HEAD
   # outcome="MPR.TX.cat"
   # outcome="HBA1C.dif324m"
   # x="grup"
   # v.ajust=""
 
   outcome_sym<-rlang::sym(outcome)
+=======
+  # outcome="HBA1C.dif324m.cat"
+  # outcome="HBA1C.dif324m"
+  # x="grup"
+  # v.ajust=""
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
   
   # Número de categories de X
   Ncat.x<-sum(table(dt[x])!=0)
@@ -1031,6 +1108,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
   # Outcome es factor?
   outcome_es_factor<-any(dt[[outcome]] %>% class() %in% c("character","factor"))
+<<<<<<< HEAD
 
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
@@ -1039,6 +1117,12 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
     # if (any(dt[[outcome]] %in% c("Yes","No","Si"))) {dt<-dt %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
     
     # Modelo
+=======
+  
+  # Si Outcome (Y) es factor --> glm-Logistica
+  if (outcome_es_factor) {
+    
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
     resum<-glm(eval(parse(text=pepe)),family = binomial(link="logit"),data=dt) %>% summary %>% coef()
     
     resum_model<-tibble(categoria=row.names(resum)) %>% 
@@ -1088,6 +1172,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
 extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="") {
   
   # dt=mice::as.mids(dades)
+<<<<<<< HEAD
   # outcome="MPR.TX.cat"
   # x="grup_IDPP4"
   # v.ajust=c("sexe","edat","qmedea")
@@ -1098,15 +1183,29 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
   if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
   
+=======
+  # outcome="HBA1C.dif324m"
+  # x="grup_IDPP4"
+  # v.ajust=c("sexe","edat","qmedea")
+  
+  
+  ### Hi ha variables d'ajust genero formula llista
+  if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
+  if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
+  
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
   # Outcome es factor?
   outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
 
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
   
+<<<<<<< HEAD
     # Recode outcome Yes and Si --> 1 ¿NO SE SI FUNCIONA? 
     # if (any(dt$data[[outcome]] %in% c("Yes","No","Si"))) {dt$data<-dt$data %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
     
+=======
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
     resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
 
     resum_model<-tibble(categoria=row.names(resum)) %>% 
@@ -1288,8 +1387,13 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
   
   # dades_long=dades
+<<<<<<< HEAD
   # outcome="MPR.TX.cat"
   # grups="grup"
+=======
+  # outcome="HBA1C.dif324m"
+  # grups="grup_ISGLT2"
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
   # v.ajust=c("sexe","edat")
   # v.ajust=vector_ajust
 
@@ -1298,7 +1402,11 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   
   if (!outcome_es_factor) {
     
+<<<<<<< HEAD
     # Outcome continu/númeric
+=======
+    # Outcome continu 
+>>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
     
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
