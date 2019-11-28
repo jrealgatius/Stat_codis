@@ -1084,20 +1084,13 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
   # dt=dades_long %>% filter(.imp==0)
-<<<<<<< HEAD
   # outcome="MPR.TX.cat"
   # outcome="HBA1C.dif324m"
   # x="grup"
   # v.ajust=""
 
   outcome_sym<-rlang::sym(outcome)
-=======
-  # outcome="HBA1C.dif324m.cat"
-  # outcome="HBA1C.dif324m"
-  # x="grup"
-  # v.ajust=""
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
-  
+
   # Número de categories de X
   Ncat.x<-sum(table(dt[x])!=0)
   if (is.numeric(dt[[x]])) Ncat.x=1
@@ -1108,21 +1101,10 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
   # Outcome es factor?
   outcome_es_factor<-any(dt[[outcome]] %>% class() %in% c("character","factor"))
-<<<<<<< HEAD
 
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
-
-    # Recode outcome Yes and Si --> 1 
-    # if (any(dt[[outcome]] %in% c("Yes","No","Si"))) {dt<-dt %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
     
-    # Modelo
-=======
-  
-  # Si Outcome (Y) es factor --> glm-Logistica
-  if (outcome_es_factor) {
-    
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
     resum<-glm(eval(parse(text=pepe)),family = binomial(link="logit"),data=dt) %>% summary %>% coef()
     
     resum_model<-tibble(categoria=row.names(resum)) %>% 
@@ -1172,18 +1154,6 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
 extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="") {
   
   # dt=mice::as.mids(dades)
-<<<<<<< HEAD
-  # outcome="MPR.TX.cat"
-  # x="grup_IDPP4"
-  # v.ajust=c("sexe","edat","qmedea")
-  
-  outcome_sym<-rlang::sym(outcome)
-  
-  ### Hi ha variables d'ajust genero formula llista
-  if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
-  if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
-  
-=======
   # outcome="HBA1C.dif324m"
   # x="grup_IDPP4"
   # v.ajust=c("sexe","edat","qmedea")
@@ -1193,19 +1163,12 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
   if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
   
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
   # Outcome es factor?
   outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
 
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
   
-<<<<<<< HEAD
-    # Recode outcome Yes and Si --> 1 ¿NO SE SI FUNCIONA? 
-    # if (any(dt$data[[outcome]] %in% c("Yes","No","Si"))) {dt$data<-dt$data %>% mutate(!!outcome_sym:=recode_factor(!!outcome_sym,"Yes"="1","Si"="1","No"="0"))}
-    
-=======
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
     resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
 
     resum_model<-tibble(categoria=row.names(resum)) %>% 
@@ -1387,13 +1350,10 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
   
   # dades_long=dades
-<<<<<<< HEAD
   # outcome="MPR.TX.cat"
   # grups="grup"
-=======
   # outcome="HBA1C.dif324m"
   # grups="grup_ISGLT2"
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
   # v.ajust=c("sexe","edat")
   # v.ajust=vector_ajust
 
@@ -1401,13 +1361,7 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   outcome_es_factor<-any(dades_long[[outcome]] %>% class() %in% c("character","factor"))
   
   if (!outcome_es_factor) {
-    
-<<<<<<< HEAD
-    # Outcome continu/númeric
-=======
-    # Outcome continu 
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
-    
+
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
       transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
