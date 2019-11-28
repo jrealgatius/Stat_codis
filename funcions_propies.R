@@ -123,8 +123,6 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   
 }
 
-<<<<<<< HEAD
-=======
 
 ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc=0,my.vec=c(" "," ")) {
   
