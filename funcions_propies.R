@@ -190,7 +190,7 @@ ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc
 
 
 
->>>>>>> cbfa11db174a3c4d8f6cb48c770419b81220da12
+
 
 # generar_mostra_fitxers()  ----------------------
 
