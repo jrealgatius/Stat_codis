@@ -3692,6 +3692,34 @@ forest.plot<-function(dadesmodel=ramo,label=dadesmodel$Categoria,mean=dadesmodel
   fp
 }
 
+# Forest plot versió 2 millorada per tal que funcioni 
+forest.plot.v2<-function(dadesmodel=ramo,label="Categoria",mean="OR",lower="Linf",upper="Lsup",label_X="OR (95% CI)", intercept=1) {
+  
+  # dadesmodel=dt_dif
+  # label="lipo"
+  # mean="dif_st"
+  # lower ="ci1"
+  # upper="ci2"
+  # label_X="Differences standardized (95% CI)"
+  # intercept=0
+  
+  dadesmodel<-dadesmodel %>% mutate(id=seq(length(dadesmodel[[label]])))
+  
+  # Generar data set 
+  dadestemp <- dadesmodel %>% select(etiqueta=!!label,valor=!!mean,Linf=!!lower,Lsup=!!upper,id)
+  
+  fp <- ggplot(data=dadestemp,aes(x=id, y=valor, ymin=Linf, ymax=Lsup)) +
+    geom_pointrange() + 
+    geom_hline(yintercept=intercept, lty=2) +  # add a dotted line at x=1 after flip
+    coord_flip() +  # flip coordinates (puts labels on y axis)
+    xlab("Label") + ylab(label_X) +
+    scale_x_continuous(breaks=dadestemp %>% pull(id),labels=dadestemp %>% pull(etiqueta))
+  
+  fp
+  
+}
+
+
 #  DATA RANDOM ENTRE DUES DATES (dataini i datafi) ---------------
 
 data.random <- function(dataini=20120101, datafi=20121231) {
