@@ -2119,14 +2119,14 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
 
 extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
   
-  # x="grup"
-  # y="HBA1C.dif324m.cat"
+  # x="regicor_mis"
+  # y="event"
   # taulavariables=conductor_variables
-  # dades=dades
+  # dades=dades_temp
   # elimina=c("IDP")
   # a=""
-  # valor_outcome="Yes"
-  # conditional = F
+  # valor_outcome="Caso"
+  # conditional = T
   # strata = "caseid"
   
   # Ojo que variables no factoritzades --> error
@@ -2136,12 +2136,14 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   resposta<-all.vars(formu)[1]
   fit<-stats::glm(formu, family = binomial, data=dades)
   
+  # Customitzo el valor del outcome
+  formu_text<-formula.text(x=x,y=paste0(y,"=='",valor_outcome,"'"),taulavariables=taulavariables)
+  
   if (conditional==F) {
     taula_OR<-extreure_OR(formu=formu,dades=dades,conditional=conditional,strata=strata)
   } else {
     taula_OR<-extreure_OR(formu=formu_text,dades=dades,conditional=conditional,strata=strata)
     fit_c<-survival::clogit(as.formula(paste0(formu_text,"+ strata(",strata,")")),data=dades)
-    
     }
   
   taula_editada<-generar_taula_variables_formula(formu,dades) 
@@ -2448,8 +2450,6 @@ Pvalors_ajustats_taula<-function(objecte_taula=OR.ajust, p.valors='p valor', met
   
   
 }
-
-
 
 
 
