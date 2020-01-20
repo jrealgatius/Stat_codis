@@ -564,14 +564,14 @@ factoritzar<-function(dt=dades,variables=c("grup","situacio")) {
 
 #  Recodifico EN FUNCIÓ DE de llista de camps  -------------------
 ### RETORNA DADES AMB RECODIFICACIÓ 
-
 recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1",missings=F,prefix=NA){
   
   # dt=dades
   # taulavariables = conductor_variables
-  # criteris = "recodes"
+  # criteris = "recodes2"
   # missings=F
-
+  # prefix=NA
+  
   ##  Llegeix criteris de variables 
   variables <- readxl::read_excel(taulavariables)
   variables[is.na(variables)]<- 0
@@ -618,18 +618,17 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
     # Si missings --> generar a una categoria missing
     if (missings==T) {dt<-missings_to_level(dt,"popes")}
     
-    
     colnames(dt)[colnames(dt)=="popes"] <- nomrecode
     dt<-dt %>% dplyr::select(-camp)
   
     print(paste0("Generada: ",nomrecode))
-  
-  }
+    # Validació
+    dt %>% group_by_at(vars(!!nomrecode)) %>% summarise_at(vars(!!nomcamp),list(min=~min(.,na.rm=T),max=~max(.,na.rm=T))) %>% ungroup() %>% 
+      print()
+    }
   
   dt
-  
 }
-
 
 # Genera dummis (0/1) a partir d'una variable del data frame   -----------------
 # Retorna la variable 
