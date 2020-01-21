@@ -613,7 +613,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
     if (nomrecode%in%names(dt)) {dt<-dt %>% select_(paste0("-",nomrecode))}
     
     dt<-dt %>% mutate_(camp=nomcamp)
-    dt<-dt %>% mutate(popes=cut(camp,breaks = mamon))
+    dt<-dt %>% mutate(popes=cut(camp,breaks = mamon) %>% as.factor)
 
     # Si missings --> generar a una categoria missing
     if (missings==T) {dt<-missings_to_level(dt,"popes")}
@@ -2118,15 +2118,20 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
 
 extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
   
-  # x="regicor_mis"
-  # y="event"
-  # taulavariables=conductor_variables
-  # dades=dades_temp
-  # elimina=c("IDP")
   # a=""
   # valor_outcome="Caso"
   # conditional = T
   # strata = "caseid"
+  # x="taula9"
+  # y="event"
+  # taulavariables=conductor_variables
+  # dades=dades
+  # elimina=c("IDP")
+  
+  # Factoritzar character a factor
+  covariables<-extreure.variables(x,taulavariables)
+  covariables_character<-dades %>% select_at(covariables) %>% select_if(is.character) %>% names()
+  dades<-dades %>% mutate_at(covariables_character,as.factor)
   
   # Ojo que variables no factoritzades --> error
   formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
