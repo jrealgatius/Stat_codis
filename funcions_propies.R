@@ -3107,6 +3107,10 @@ criteris_exclusio_diagrama<-function(dt=dades,
   #   tidyr::unite_("filtres", c("camp", criteris),sep="") 
   
   # Genero la llista de filtres (versió millorada) 
+  
+  # caracters logics del filtre
+  char_logics<-c(">",">=","<","<=","==","!=","is.na") %>% paste0(collapse = '|')
+  
   maco_criteris<-variables %>% 
     dplyr::filter_(paste0(criteris,"!=0")) %>% dplyr::select_("camp",criteris,ordre) %>% 
     transmute_("camp","crit_temp"=criteris,ordre) %>% 
