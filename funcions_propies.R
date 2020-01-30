@@ -3057,12 +3057,12 @@ criteris_exclusio_diagrama<-function(dt=dades,
  
   # dt=dades
   # taulavariables=conductor_variables
-  # criteris="exclusio"
+  # criteris="c_exclusio1"
   # ordre="exc_ordre"
+  # grups="event"
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="NA"
-  # grups=NA
+  # etiquetes="exc_lab"
   # sequencial=F
   # colors=c("white","grey")
   # forma=c("ellipse","box")
@@ -3129,7 +3129,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select_("filtres",ordre)
   maco_miss<-maco_noms %>% cbind(maco_miss) %>% dplyr::mutate(tipus_cri="missing")
   
-  maco_criteris<-maco_criteris %>% rbind(maco_miss)%>%dplyr::arrange_(ordre)
+  maco_criteris<-maco_criteris %>% rbind(maco_miss) %>%dplyr::arrange_(ordre)
 
   # # Eliminar filtres repetits?
   maco_criteris<-maco_criteris %>% group_by(filtres) %>% slice(1L) %>% ungroup() %>% arrange_(ordre)
@@ -3164,7 +3164,6 @@ criteris_exclusio_diagrama<-function(dt=dades,
       datatemp2<-datatemp2 %>%dplyr::filter(dumy==0)
     }
     
-    
     #-------------------------------------------------------------------------------#  
     
     }
@@ -3175,7 +3174,6 @@ criteris_exclusio_diagrama<-function(dt=dades,
   taula_criteris<-num_criteris %>% 
     expand(grup,camp,filtre_tipus) %>% 
     dplyr::left_join(num_criteris,by=c("grup","camp","filtre_tipus"))%>%dplyr::arrange_("criteri")
-  
   
     # Netejar aquelles files que no tinguin cap 0 en cap dels grups 
   temp<-taula_criteris %>% mutate(n=ifelse(is.na(n),0,n)) %>% 
@@ -3188,8 +3186,10 @@ criteris_exclusio_diagrama<-function(dt=dades,
     dplyr::select(-suma_n) %>% 
     dplyr::mutate (n=ifelse(is.na(n),0,n))
   
-  
-
+  # Afegir ordre
+  taula_ordre<-taula_criteris %>% group_by(camp) %>% slice(1L) %>% ungroup() %>% select(camp,ordre=criteri)
+  taula_criteris<-taula_criteris %>% left_join(taula_ordre,by="camp") %>% arrange(ordre)
+    
   # Afegir etiquetes a num_criteris
   # Etiquetes dels criteris d'inclusio 
   
@@ -3205,22 +3205,18 @@ criteris_exclusio_diagrama<-function(dt=dades,
   taula_criteris<-taula_criteris %>% dplyr::left_join(taula_etiquetes,by="camp")
   taula_criteris<-taula_criteris %>% dplyr::mutate(etiqueta_exclusio=ifelse(filtre_tipus=="missing",paste0("Excluded NA:",camp),etiqueta_exclusio))
   
-  
   #[AQUI!]#Creem els parametres que posramen ald Diagrammer!i si tenim un factor, 
   #cada nivell del factor anira a una llista! 
-  
-  
   ## I ara passar informació generada a vectors per passar-ho al diagrameR
   
-  # N d'esclusions 
-  n_exc<-taula_criteris[c("n","grup")] %>% split(.$grup)
-
   # Etiquetes d'exclusions
   lab_exc<-taula_criteris[c("etiqueta_exclusio","grup")] %>% split(.$grup)
   lab_exc<-lab_exc[[1]]$etiqueta_exclusio %>% as_vector
   
+  # N d'esclusions 
+  n_exc<-taula_criteris[c("n","grup")] %>% split(.$grup)
+
   # Calcular N població final per cada grup (3x1)
-  
   # Generar FILTRE
   filtre_total<-stringr::str_c(maco_criteris$filtres,collapse=" | ")
   filtre_total<-stringr::str_c("!(",filtre_total,")")
