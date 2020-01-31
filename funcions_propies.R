@@ -3039,9 +3039,9 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 #fet avui 12.11.19  12:37 minuts 
 
 #  FLOW-CHART A partir de criteris d'exclusio en la Taulavariable-Conductor  -----------------------------------
-#  [a partir de maxim 3 grups, es pot fer un flow-chart condicionat per les exclusions que posarem al Conductor. ]
+#  [Maxim 3 grups, es pot fer un flow-chart condicionat per les exclusions que posarem al Conductor. ]
 #  [Aquest Flow-chart pot ser Global, o Sequencial, amb l'ordre condicionat al Condutor ]
-#  [D'aquesta manera , si al Conductor i posem quines son les excluisions i l'ordre, aplicarem el grafic eficientment!]
+#  [D'aquesta manera , si al Conductor i posem quines son les exclusions i l'ordre, aplicarem el grafic eficientment!]
 #  [Tambe podem triar el color i la forma de les caixes del flow-chart, es una funcio dins d'una altra]
 
 criteris_exclusio_diagrama<-function(dt=dades,
@@ -3241,12 +3241,12 @@ criteris_exclusio_diagrama<-function(dt=dades,
   ###################################################################
   #  Generar Etiquetes: Pob inicial i final x grup 
   #  Etiquetes grups
+
+  pob_lab_grup1<-c(paste0("Group Pob.Inicial  ",grups2,    ":  ",names(n_exc)[1]),paste0("Group Pob.Final  ",grups2,": ",names(n_exc)[1]))
+  pob_lab_grup2<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",names(n_exc)[2]),paste0("Group Pob.Final  ",grups2,": ",names(n_exc)[2]))
+  pob_lab_grup3<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",names(n_exc)[3]),paste0("Group Pob.Final  ",grups2,": ",names(n_exc)[3]))
   
-  pob_lab_grup1<-c(paste0("Group Pob.Inicial  ",grups2,    ":  ",taula_criteris[["grup"]][1]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][1]))
-  pob_lab_grup2<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",taula_criteris[["grup"]][2]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][2]))
-  pob_lab_grup3<-c(paste0("Group Pob.Inicial  ",grups2,     ": ",taula_criteris[["grup"]][3]),paste0("Group Pob.Final  ",grups2,": ",taula_criteris[["grup"]][3]))
-  
-   
+
   # Si només hi ha un grup pob inicial es parametres inicials
   #-------------------------------------------------------------------------------#
   if ( ngrups==1) {
