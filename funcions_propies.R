@@ -2125,7 +2125,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   # x="taula9"
   # y="event"
   # taulavariables=conductor_variables
-  # dades=dades
+  # dades=dt_temp
   # elimina=c("IDP")
   
   # Factoritzar character a factor
@@ -2137,9 +2137,15 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
   formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
   
-  resposta<-all.vars(formu)[1]
-  fit<-stats::glm(formu, family = binomial, data=dades)
+  # Subselecciono dades completes amb només variables utilitzades i elimino nivells sense utilitzar (Sinó peta en ROC curve)
+  if (conditional) {dades<-dades %>% dplyr::select(c(all.vars(formu),strata)) %>% na.omit()}
+  if (conditional==F) {dades<-dades %>% dplyr::select(c(all.vars(formu))) %>% na.omit()}
+  # Eliminar nivells que no tenim dades de variables factor 
+  dades<-dades %>% mutate_if(is.factor, droplevels)
   
+  resposta<-all.vars(formu)[1]  
+  fit<-stats::glm(formu, family = binomial, data=dades)
+
   # Customitzo el valor del outcome
   formu_text<-formula.text(x=x,y=paste0(y,"=='",valor_outcome,"'"),taulavariables=taulavariables)
   
@@ -2166,7 +2172,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
     dplyr::select(Categoria=Variable,OR,Linf,Lsup,p.value)
  
   forest_plot<-forest.plot(taula_editada)
-  
+ 
   dades_prediccio<-
     data.frame(prediccio=predict(fit,dades, type=c("response")),known.truth=dades %>% pull(resposta)) %>% 
     tibble::as_tibble() %>% 
