@@ -623,7 +623,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   
     print(paste0("Generada: ",nomrecode))
     # Validació
-    dt %>% group_by_at(vars(!!nomrecode)) %>% summarise_at(vars(!!nomcamp),list(min=~min(.,na.rm=T),max=~max(.,na.rm=T))) %>% ungroup() %>% 
+    dt %>% group_by_at(vars(!!nomrecode)) %>% summarise_at(vars(!!nomcamp),list(min=~min(.,na.rm=T),max=~max(.,na.rm=T),n())) %>% ungroup() %>% 
       print()
     }
   
@@ -2102,7 +2102,7 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
   
   # formu=formu
   # dt=dades
-  
+
   taula_editada<-
     all.vars(formu)[-1] %>% 
     map(~paste0(.x,levels(dades[[.x]]),"/",.x)) %>% 
@@ -2122,10 +2122,10 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   # valor_outcome="Caso"
   # conditional = T
   # strata = "caseid"
-  # x="taula9"
+  # x="regicor_plus"
   # y="event"
   # taulavariables=conductor_variables
-  # dades=dt_temp
+  # dades=dades
   # elimina=c("IDP")
   
   # Factoritzar character a factor
@@ -2133,6 +2133,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   covariables_character<-dades %>% select_at(covariables) %>% select_if(is.character) %>% names()
   dades<-dades %>% mutate_at(covariables_character,as.factor)
   
+
   # Ojo que variables no factoritzades --> error
   formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
   formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
