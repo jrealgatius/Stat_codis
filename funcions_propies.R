@@ -623,7 +623,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   
     print(paste0("Generada: ",nomrecode))
     # Validació
-    dt %>% group_by_at(vars(!!nomrecode)) %>% summarise_at(vars(!!nomcamp),list(min=~min(.,na.rm=T),max=~max(.,na.rm=T),n())) %>% ungroup() %>% 
+    dt %>% group_by_at(vars(!!nomrecode)) %>% summarise_at(vars(!!nomcamp),list(min=~min(.,na.rm=T),max=~max(.,na.rm=T),freq=~n())) %>% ungroup() %>% 
       print()
     }
   
