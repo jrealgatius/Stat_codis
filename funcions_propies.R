@@ -1995,7 +1995,7 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
   
 }
 
-#################     FUNCIO PER EXTREURE CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades 
+# CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades  --------------
 extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls") {
   
   # var1="HbA1c"
@@ -2032,6 +2032,57 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
   
   ppp
 }
+
+
+# Correlacions , matriu i plot de quantis de dades  ----------------------
+
+# Retorna matriu de correlacions, i plot bivariant (Correlograma) de ggcorrplot
+# Requereix dades, llista1, llista2
+
+extreure_cor_multi<-function(dades=dt,llistavar1=c("Age","BMI"),llistavar2=c("Large_PER_HDL","Medium_HDL_P_molL"),etiquetar=F,coductor_variables=conductor_variables,method = "circle",...){
+  
+  # dt=dades
+  # llistavar1=extreure.variables("clinicas_corr",conductor_variables)
+  # llistavar2=extreure.variables("lipos2",conductor_variables)
+  # coductor_variables=conductor_variables
+  # etiquetar=T
+  
+  # Selecció de variables
+  dt<-dades %>% select(llistavar1,llistavar2)
+  
+  # Genero matriu
+  corr_temp<-cor(dt,use="pairwise",method="pearson") 
+  
+  # Convertir matriu a tibble 
+  corr_temp<-as_tibble(row.names(corr_temp)) %>% cbind(corr_temp) %>% as_tibble() 
+  
+  # Filtrar matriu 
+  # En cas de llistavar2 llavors filtrar dades a matriciar
+  corr_temp<-corr_temp %>% filter (value%in%llistavar1) %>% select("value",llistavar2)
+  
+  # Generar plot
+  # 1. Ho converteixo en matriu i capturo noms de files 
+  M<-as.matrix(select(corr_temp,-1))
+  rownames(M) <- llistavar1
+  # colnames(M) <- llistavar2
+  
+  # Etiquetar variable
+  if (etiquetar) {
+    # Si etiquetar llavors capturar etiquetes de conductor  
+    rownames(M)<-etiquetar_taula(as_tibble(llistavar1),camp="value",taulavariables=conductor_variables,camp_descripcio= "descripcio") %>% pull(value)
+    colnames(M)<-etiquetar_taula(as_tibble(llistavar2),camp="value",taulavariables=conductor_variables,camp_descripcio= "descripcio") %>% pull(value)
+  }
+  
+  # Ploto el tema 
+  # corrplot<-ggcorrplot::ggcorrplot(M,method = "circle",type=c("full"),lab_col = "black",colors = c("red", "white", "black"),outline.color = "grey")
+  corrplot<-ggcorrplot::ggcorrplot(M,method = method,...)
+  
+  # Retorno llista d'objectes (MAtriu i plot)
+  list(matriu=corr_temp,plot=corrplot)
+}
+
+
+
 
 #  Extreure OR (segons formula, i dades)  --------------------
 #       LLANÇO UNA FORMULA les dades per executar un model i retorno OR , CI95% i p-valor en una tibble()
