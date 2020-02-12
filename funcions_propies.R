@@ -898,8 +898,9 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
   llistataula<-variables %>%
     dplyr::filter(!!x_sym>0) %>%
     dplyr::arrange(!!x_sym) %>% 
-    dplyr::filter("camp"!=eliminar) %>% 
     pull(camp) 
+  
+  llistataula<-llistataula[llistataula%nin% eliminar]
   
   if (a!="") llistataula<-c(a,llistataula)
   
@@ -2166,17 +2167,16 @@ generar_taula_variables_formula<-function(formu="AnyPlaqueBasal~CD5L",dades=dt) 
 
 
 # Retorno model amb ORs, curva ROC , auc IC95% etc... a partir de formula glm , i dades 
-
 extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariables=conductorvariables,dades=dades,elimina=c("IDP"),a="", valor_outcome="Yes",conditional=F,strata="caseid") {
   
   # a=""
   # valor_outcome="Caso"
   # conditional = T
   # strata = "caseid"
-  # x="regicor_plus"
+  # x="regicor_vars2"
   # y="event"
   # taulavariables=conductor_variables
-  # dades=dades
+  # dades=dades_temp
   # elimina=c("IDP")
   
   # Factoritzar character a factor
@@ -2184,11 +2184,15 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   covariables_character<-dades %>% select_at(covariables) %>% select_if(is.character) %>% names()
   dades<-dades %>% mutate_at(covariables_character,as.factor)
   
-
-  # Ojo que variables no factoritzades --> error
-  formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables) 
-  formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables)
+  # Eliminar variable que no hi ha com a mínim 2 nivells
+  var_eliminar<-dades %>% select_at(covariables) %>% select_if(is.factor) %>% map(~length(unique(.x)))
+  var_eliminar<-var_eliminar[var_eliminar==1] %>% names()
+  print(paste0("Eliminada del model: ", var_eliminar))
   
+  # Ojo que variables no factoritzades --> error
+  formu=formula.LOGIT(x=x,y=y,taulavariables=taulavariables,eliminar = var_eliminar) 
+  formu_text<-formula.text(x=x,y=y,taulavariables=taulavariables,eliminar = var_eliminar)
+
   # Subselecciono dades completes amb només variables utilitzades i elimino nivells sense utilitzar (Sinó peta en ROC curve)
   if (conditional) {dades<-dades %>% dplyr::select(c(all.vars(formu),strata)) %>% na.omit()}
   if (conditional==F) {dades<-dades %>% dplyr::select(c(all.vars(formu))) %>% na.omit()}
@@ -2199,7 +2203,7 @@ extreure_model_logistic<-function(x="OS4_GSK",y="canvi6M.glipesCAT2",taulavariab
   fit<-stats::glm(formu, family = binomial, data=dades)
 
   # Customitzo el valor del outcome
-  formu_text<-formula.text(x=x,y=paste0(y,"=='",valor_outcome,"'"),taulavariables=taulavariables)
+  formu_text<-formula.text(x=x,y=paste0(y,"=='",valor_outcome,"'"),taulavariables=taulavariables,eliminar = var_eliminar)
   
   if (conditional==F) {
     taula_OR<-extreure_OR(formu=formu,dades=dades,conditional=conditional,strata=strata)
