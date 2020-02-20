@@ -1692,9 +1692,8 @@ agregar_solapaments_gaps<-function(dt=dades,id="idp",datainici="data",datafinal=
   # Printa errors
   if(sel){
     errors<-dt %>% dplyr::filter(error == 1)
-    print("ull! aquests són possibles d'errors de dates!,que s'han ELIMINAT!")
-    print(errors)
-  } 
+    warning("ull! aquests són possibles d'errors de dates!,que s'han ELIMINAT!")
+    } 
   # Filtra
   if (sel) { dt<-dt %>% dplyr::filter(error == 0) }
   if (sel==F) { dt<-dt }
