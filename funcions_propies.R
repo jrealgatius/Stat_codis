@@ -3229,6 +3229,12 @@ criteris_exclusio_diagrama<-function(dt=dades,
     
     }
   
+  
+  # Si un grup no te exclusions s'ha d'afegir una fila missing 
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=0))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=1))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=2))
+  
   # ull FEM l'ODRE !!!
   
   # Expandir per tenir una fila per criteri amb valor 
