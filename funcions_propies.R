@@ -3141,7 +3141,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     Npob_inicial=dt %>% count() %>% as.numeric() }
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables,col_types = "text")
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
