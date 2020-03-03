@@ -3116,17 +3116,19 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      colors=c("white","grey"),
                                      forma=c("ellipse","box")){
  
-  # dt=dades
-  # taulavariables=conductor_variables
-  # criteris="c_exclusio1"
+  # dt=dt_matching_pre
+  # taulavariables=conductor
+  # criteris="exc_pre2"
   # ordre="exc_ordre"
-  # grups="event"
+  # grups="sexe"
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="exc_lab"
-  # sequencial=F
+  # etiquetes="descripcio"
+  # sequencial=T
   # colors=c("white","grey")
   # forma=c("ellipse","box")
+
+
   
   grups2=grups
   ### Si hi ha grups capturar el nombre categories
@@ -3228,12 +3230,13 @@ criteris_exclusio_diagrama<-function(dt=dades,
     #-------------------------------------------------------------------------------#  
     
     }
-  
-  
+
   # Si un grup no te exclusions s'ha d'afegir una fila missing 
-  num_criteris<-num_criteris %>% bind_rows(tibble(grup=0))
-  num_criteris<-num_criteris %>% bind_rows(tibble(grup=1))
-  num_criteris<-num_criteris %>% bind_rows(tibble(grup=2))
+  nivells_grup<-datatemp %>% select(grup) %>% distinct() %>% pull()
+  
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[1]))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[2]))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[3]))
   
   # ull FEM l'ODRE !!!
   
