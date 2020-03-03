@@ -3065,7 +3065,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     dplyr::mutate_if(is.character,funs(str_trim(.)))
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables,col_types = "text")
   variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
