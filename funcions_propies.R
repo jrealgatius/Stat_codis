@@ -3118,12 +3118,12 @@ criteris_exclusio_diagrama<-function(dt=dades,
  
   # dt=dades
   # taulavariables=conductor_variables
-  # criteris="c_exclusio1"
+  # criteris="exc"
   # ordre="exc_ordre"
-  # grups="event"
+  # grups=NA
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="exc_lab"
+  # etiquetes="Descripcio"
   # sequencial=F
   # colors=c("white","grey")
   # forma=c("ellipse","box")
@@ -3144,7 +3144,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
   ##  Elimino els espais en blanc de les variables factor
-  dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) %>% as.data.table()
+  dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.)))
 
   ## Selecciono dades només de les variables implicades en el filtres 
   #llista_camps<-variables["camp"] 
