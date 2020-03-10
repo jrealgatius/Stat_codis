@@ -3065,7 +3065,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     dplyr::mutate_if(is.character,funs(str_trim(.)))
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables,col_types = "text")
   variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
@@ -3116,18 +3116,18 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      colors=c("white","grey"),
                                      forma=c("ellipse","box")){
  
-  # dt=dades
-  # taulavariables=conductor_variables
-  # criteris="exc"
+  # dt=dt_matching_pre
+  # taulavariables=conductor
+  # criteris="exc_pre2"
   # ordre="exc_ordre"
-  # grups=NA
+  # grups="sexe"
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="Descripcio"
-  # sequencial=F
+  # etiquetes="descripcio"
+  # sequencial=T
   # colors=c("white","grey")
   # forma=c("ellipse","box")
-  
+
   grups2=grups
   ### Si hi ha grups capturar el nombre categories
   # Per defecte UN sol grup
@@ -3139,7 +3139,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     Npob_inicial=dt %>% count() %>% as.numeric() }
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables,col_types = "text")
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
@@ -3228,6 +3228,13 @@ criteris_exclusio_diagrama<-function(dt=dades,
     #-------------------------------------------------------------------------------#  
     
     }
+
+  # Si un grup no te exclusions s'ha d'afegir una fila missing 
+  nivells_grup<-datatemp %>% select(grup) %>% distinct() %>% pull()
+  
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[1]))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[2]))
+  num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[3]))
   
   # ull FEM l'ODRE !!!
   
