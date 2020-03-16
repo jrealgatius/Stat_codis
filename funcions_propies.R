@@ -3116,11 +3116,11 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      colors=c("white","grey"),
                                      forma=c("ellipse","box")){
  
-  # dt=dt_matching_pre
+  # dt=dt_post_matching
   # taulavariables=conductor
-  # criteris="exc_pre2"
+  # criteris="exc_post2"
   # ordre="exc_ordre"
-  # grups="sexe"
+  # grups="grup"
   # 
   # pob_lab=c("Pob inicial","Pob final")
   # etiquetes="descripcio"
@@ -3143,6 +3143,11 @@ criteris_exclusio_diagrama<-function(dt=dades,
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
+  # Parar si no hi ha criteris d'exclusió
+  if (variables %>% count() %>% as.numeric()==0) {
+    print("No hi ha criteris jejejj")
+    return("Error") }
+  
   ##  Elimino els espais en blanc de les variables factor
   dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.)))
 
