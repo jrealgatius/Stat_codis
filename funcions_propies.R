@@ -937,9 +937,11 @@ formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavaria
   
 }
 
-#  formula_vector(vector,y) ##########
+#  formula_vector(vector,y, vector caracter a elimina) ##########
 
-formula_vector<-function(vector=c("sex","age"),y="y",logit=F){
+formula_vector<-function(vector=c("sex","age"),y="y",logit=F,eliminar=NA){
+  
+  vector<-vector [!vector %in% eliminar]
   
   if (!logit) {formula=as.formula(paste(y, paste(vector, collapse=" + "), sep=" ~ "))}
   if (logit) {formula=paste0("as.factor(",y,")~ ", paste(vector, collapse=" + ")) %>% as.formula()}           
