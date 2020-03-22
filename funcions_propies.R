@@ -3055,11 +3055,16 @@ agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),
 }
 
 #  APLICA CRITERIS D'EXCLUSIÓ A dades  -----------------------
-criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1") {
+
+# Per defecte exclou registres que tenen missings en variables implicades
+# missings=F --> no elimina per criteri amb valors missings 
+
+criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",missings=T) {
   
-  # dt=dades
-  # taulavariables=conductor_variables
-  # criteris="exclusio"
+  # dt=dt_BCNNORD
+  # taulavariables=conductor
+  # criteris="exclusio2"
+  # missings=T
 
   ##  2. Eliminar els espais en blanc de les variables factors del data.frame
   dt<-dt %>% 
@@ -3081,19 +3086,23 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     mutate(crit_temp=if_else(str_detect(crit_temp,"is.na"),paste0("is.na(",camp,")"),crit_temp)) %>% 
     mutate(camp=if_else(str_detect(crit_temp,"is.na"),"",camp)) %>% 
     # Si es texte sense igualtat --> la poso 
-    mutate(crit_temp=if_else(str_detect(crit_temp,char_logics),crit_temp,paste0("=='",crit_temp,"'"))) %>% 
-    # Genero la llista de filtres 
-    tidyr::unite(filtres, c("camp", "crit_temp"),sep="")
-
-     # Concateno condicions amb un OR
+    mutate(crit_temp=if_else(str_detect(crit_temp,char_logics),crit_temp,paste0("=='",crit_temp,"'"))) 
+  
+  # Genero la llista de filtres     
+  maco<-maco %>% tidyr::unite(filtres, c("camp", "crit_temp"),sep="", remove=F) %>% 
+    mutate(filtres=paste0("(",filtres,")"))  
+  
+  # Afegir valors valids per aplicar criteri (Si missings==F)
+  if (missings==F) maco<-maco %>% mutate(filtres=stringr::str_c("(", filtres, " & !is.na(",camp, "))"))
+    
+  # Concateno condicions amb un OR
   maco<-str_c(maco$filtres,collapse=" | ")
   
   ## 1. Genera filtre en base a columna exclusio1   popes
   popes<-str_c("!(",maco,")")
 
   ##  3. Aplicar filtre: popes a dt
-  dt<-dt %>% 
-    dplyr::filter(eval(parse(text=popes)))
+  dt %>% dplyr::filter(eval(parse(text=popes)))
   
 }
 
@@ -3107,6 +3116,9 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
 #  [D'aquesta manera , si al Conductor i posem quines son les exclusions i l'ordre, aplicarem el grafic eficientment!]
 #  [Tambe podem triar el color i la forma de les caixes del flow-chart, es una funcio dins d'una altra]
 
+# Per defecte exclou registres que tenen missings en variables implicades
+# missings=F --> no elimina per criteri amb valors missings 
+
 criteris_exclusio_diagrama<-function(dt=dades,
                                      taulavariables="VARIABLES_R3b.xls",
                                      criteris="exclusio1",
@@ -3116,19 +3128,20 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      grups=NA,
                                      sequencial=F,
                                      colors=c("white","grey"),
-                                     forma=c("ellipse","box")){
+                                     forma=c("ellipse","box"), missings=T){
  
-  # dt=dt_post_matching
+  # dt=dt_BCNNORD
   # taulavariables=conductor
-  # criteris="exc_post2"
+  # criteris="exclusio2"
   # ordre="exc_ordre"
-  # grups="grup"
+  # grups=NA
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="descripcio"
-  # sequencial=T
+  # etiquetes="camp"
+  # sequencial=F
   # colors=c("white","grey")
   # forma=c("ellipse","box")
+  # missings=F
 
   grups2=grups
   ### Si hi ha grups capturar el nombre categories
@@ -3151,7 +3164,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     return("Error") }
   
   ##  Elimino els espais en blanc de les variables factor
-  dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.)))
+  dt<-dt %>% dplyr::mutate_if(is.factor,funs(str_trim(.))) 
 
   ## Selecciono dades només de les variables implicades en el filtres 
   #llista_camps<-variables["camp"] 
@@ -3188,29 +3201,38 @@ criteris_exclusio_diagrama<-function(dt=dades,
     # Si es texte sense igualtat --> la poso 
     mutate(crit_temp=if_else(str_detect(crit_temp,char_logics),crit_temp,paste0("=='",crit_temp,"'"))) %>% 
     # Genero la llista de filtres 
-    tidyr::unite(filtres, c("camp", "crit_temp"),sep="")
+    tidyr::unite(filtres, c("camp", "crit_temp"),sep="") %>% 
+    mutate(filtres=paste0("(",filtres,")"))
 
   maco_criteris<-maco_noms %>% cbind(maco_criteris) %>%dplyr::mutate(tipus_cri="pur")
 
+  # Afegeix que cada criteri tingui valors valids en cada criteri  
+  maco_criteris<-maco_criteris %>% mutate(filtres=stringr::str_c("(",filtres, " & !is.na(",camp, "))"))   
+  
   maco_miss<-variables %>% 
     dplyr::select_("camp",ordre) %>%
     dplyr::mutate(filtres=paste0("is.na(",OR2=camp,")",sep="")) %>% dplyr::select_("filtres",ordre)
+  
   maco_miss<-maco_noms %>% cbind(maco_miss) %>% dplyr::mutate(tipus_cri="missing")
   
   maco_criteris<-maco_criteris %>% rbind(maco_miss) %>%dplyr::arrange_(ordre)
 
   # # Eliminar filtres repetits?
   maco_criteris<-maco_criteris %>% group_by(filtres) %>% slice(1L) %>% ungroup() %>% arrange_(ordre)
-    
+  
+  ## Eliminar missings criteri si missings==F                                                        
+  if (missings==F) maco_criteris<-maco_criteris %>% filter(tipus_cri!="missing")  
+
+
   ## Generar taula amb dades per cada criteri d'exclusió  
   num_criteris<-data.frame()
 
   ## Generar dades dels critersi criteris 
   datatemp2<-datatemp
-  
+
   for (i in 1: length(maco_criteris$filtres)){
   
-    #i<-1
+    #i<-3
     kk<-maco_criteris[i,]$filtres
     datatemp2<-datatemp2 %>%dplyr::mutate(dumy=(if_else(eval(parse(text=kk)),1,0,missing =NULL)),
                                    dumy = replace_na(dumy, 0))
@@ -3227,10 +3249,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     num_criteris<-num_criteris %>% rbind(dades_criteris)
     #------------------------------------------------------------------------------#  
     #  # Si es sequencial --> actualitza datatemp
-    if (sequencial) {
-      
-      datatemp2<-datatemp2 %>%dplyr::filter(dumy==0)
-    }
+    if (sequencial) {datatemp2<-datatemp2 %>%dplyr::filter(dumy==0)}
     
     #-------------------------------------------------------------------------------#  
     
@@ -3264,7 +3283,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
   # Afegir ordre
   taula_ordre<-taula_criteris %>% group_by(camp) %>% slice(1L) %>% ungroup() %>% select(camp,ordre=criteri)
   taula_criteris<-taula_criteris %>% left_join(taula_ordre,by="camp") %>% arrange(ordre)
-    
+
   # Afegir etiquetes a num_criteris
   # Etiquetes dels criteris d'inclusio 
   
@@ -3302,6 +3321,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
   # Aplicar FILTRE 
   datatemp<-datatemp %>% dplyr::filter(eval(parse(text=filtre_total)))
   
+ 
   #  Generar Etiquetes: Pob inicial i final x grup 
   #-------------------------------------------------------------------------------#
   pob<-datatemp0%>% dplyr::summarise (n=n()) %>% dplyr::select(n) %>% as.vector
