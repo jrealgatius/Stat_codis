@@ -1997,6 +1997,55 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
   
 }
 
+
+# HR RISCOS COMPETITIUS  -------------
+# Funció Riscos competitius Fine & Grey 
+# Donat un event, temps de seguiment, grup, eventcompetitiu retorna tibble:
+# Beta, SE, p-value, HR, Li95%CI, Ls95%CI
+
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="peu_diab2",eventcompetitiu="exitus",dt=dades){
+  
+  # event="exitus"
+  # temps="temps_seguiment"
+  event<-sym(event)
+  temps<-sym(temps)
+  grup<-sym(grup)
+  eventcompetitiu<-sym(eventcompetitiu)
+  
+  # Selecciono variables necessaries
+  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event)
+  
+  # Generar variable status (tipo de censuras) ----
+  dt<-dt %>% mutate(status=case_when(event=="Si" ~"event",
+                                     event=="No" & exitus=="Si"~"Mortality",
+                                     event=="No" & exitus=="No"~"Censored")) 
+  
+  # Factor com a numeric 
+  grup<-matrix(as.numeric(dt$grup=="Si"))
+  
+  # Codificar riscos competitius 
+  model<-cmprsk::crr(ftime=dt$temps,
+                     fstatus=dt$status,
+                     cov1=grup , #  matrix (nobs x ncovs) of fixed covariates
+                     failcode = "event", # code of fstatus that denotes the failure type of interest
+                     cencode = "Censored") # code of fstatus that denotes censored observations
+  
+  tab <- summary(model)$coef
+  x <- round(cbind("beta" = tab[, 1], 
+                   "SE" = tab[, 3], 
+                   "p-value" = tab[, 5], 
+                   "HR" = tab[, 2],
+                   "LI" = exp(tab[, 1] - qnorm(1 - (1-0.95)/2)*tab[, 3]),
+                   "LS" = exp(tab[, 1] + qnorm(1 - (1-0.95)/2)*tab[, 3])), 4)
+  colnames(x) <- c("Beta", "SE", "p-value", "HR", "Li95%CI", "Ls95%CI")
+  rownames(x) <- rownames(tab)
+  
+  as_tibble(x)
+  
+}
+
+
+
 # CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades  --------------
 extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls") {
   
