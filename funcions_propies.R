@@ -2003,40 +2003,56 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
 # Donat un event, temps de seguiment, grup, eventcompetitiu retorna tibble:
 # Beta, SE, p-value, HR, Li95%CI, Ls95%CI
 
-extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="peu_diab2",eventcompetitiu="exitus",dt=dades){
+
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA){
   
-  # event="exitus"
-  # temps="temps_seguiment"
+  
+  # event="EV_CardV"
+  # temps="temps_fins_EVCardV"
+  # grup="diabetes"
+  # dt=dades
+  # eventcompetitiu="exitus"
+  # covariables=c("sexe","edat")
+  # covariables=NA
+  # covariables=variablesajust
+  
   event<-sym(event)
   temps<-sym(temps)
   grup<-sym(grup)
   eventcompetitiu<-sym(eventcompetitiu)
   
-  # Selecciono variables necessaries
-  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event)
+  # Selecciono variables necessaries ()
+  
+  if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event) 
+  if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables))
   
   # Generar variable status (tipo de censuras) ----
   dt<-dt %>% mutate(status=case_when(event=="Si" ~"event",
                                      event=="No" & exitus=="Si"~"Mortality",
                                      event=="No" & exitus=="No"~"Censored")) 
   
-  # Factor com a numeric 
-  grup<-matrix(as.numeric(dt$grup=="Si"))
+  # Generar matriu de covariables 
+  # Cambiar categoria de referencia de grup a No
+  dt$grup <- relevel(dt$grup, "No")
+  
+  # Afegir variable grup a covariables
+  covariables<-c("grup",covariables)
+  cov1 <- stats::model.matrix(formula_vector(covariables,""),data = dt)[, -1]
   
   # Codificar riscos competitius 
   model<-cmprsk::crr(ftime=dt$temps,
                      fstatus=dt$status,
-                     cov1=grup , #  matrix (nobs x ncovs) of fixed covariates
+                     cov1=cov1 , #  matrix (nobs x ncovs) of fixed covariates
                      failcode = "event", # code of fstatus that denotes the failure type of interest
                      cencode = "Censored") # code of fstatus that denotes censored observations
   
-  tab <- summary(model)$coef
-  x <- round(cbind("beta" = tab[, 1], 
-                   "SE" = tab[, 3], 
-                   "p-value" = tab[, 5], 
-                   "HR" = tab[, 2],
-                   "LI" = exp(tab[, 1] - qnorm(1 - (1-0.95)/2)*tab[, 3]),
-                   "LS" = exp(tab[, 1] + qnorm(1 - (1-0.95)/2)*tab[, 3])), 4)
+  tab <- summary(model)$coef[1,]
+  x <- round(cbind("beta" = tab[1], 
+                   "SE" = tab[3], 
+                   "p-value" = tab[5], 
+                   "HR" = tab[2],
+                   "LI" = exp(tab[1] - qnorm(1 - (1-0.95)/2)*tab[3]),
+                   "LS" = exp(tab[1] + qnorm(1 - (1-0.95)/2)*tab[3])), 4)
   colnames(x) <- c("Beta", "SE", "p-value", "HR", "Li95%CI", "Ls95%CI")
   rownames(x) <- rownames(tab)
   
