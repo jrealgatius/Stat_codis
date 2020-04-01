@@ -270,6 +270,17 @@ generar_mostra_fitxers<-function(directori="dades/SIDIAP",
   
 }
 
+# Retorna llista nomenada amb els mateixos noms dels objectes que inclou
+# PEr exemple fer una llista de data frames que tinguin el mateix noms que el contenen
+llistaNomenada <- function(...) {
+  v1 <- as.list(substitute(list(...)))[-1L]  
+  inputs <- list(...)
+  i1 <- names(inputs)
+  i2 <- i1 == ""
+  if(is.null(i1)) {
+    names(inputs) <- v1
+  } else names(inputs)[i2] <- v1[i2]
+  inputs }
 
 #
 #  Etiquetar les variables de les dades      #####
