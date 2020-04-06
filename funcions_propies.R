@@ -3138,9 +3138,9 @@ agregar_visites<-function(dt=VISITES,bd.dindex=20161231,finestra.dies=c(-365,0),
 
 criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris="exclusio1",missings=T) {
   
-  # dt=dt_BCNNORD
+  # dt=dt_matching
   # taulavariables=conductor
-  # criteris="exclusio2"
+  # criteris="exc_pre"
   # missings=T
 
   ##  2. Eliminar els espais en blanc de les variables factors del data.frame
@@ -3149,7 +3149,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     dplyr::mutate_if(is.character,funs(str_trim(.)))
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% select(camp,!!criteris)
   variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
@@ -3207,14 +3207,14 @@ criteris_exclusio_diagrama<-function(dt=dades,
                                      colors=c("white","grey"),
                                      forma=c("ellipse","box"), missings=T){
  
-  # dt=dt_BCNNORD
+  # dt=dt_matching
   # taulavariables=conductor
-  # criteris="exclusio2"
+  # criteris="exc_pre"
   # ordre="exc_ordre"
-  # grups=NA
+  # grups="grup"
+  # etiquetes="descripcio"
   # 
   # pob_lab=c("Pob inicial","Pob final")
-  # etiquetes="camp"
   # sequencial=F
   # colors=c("white","grey")
   # forma=c("ellipse","box")
@@ -3228,10 +3228,10 @@ criteris_exclusio_diagrama<-function(dt=dades,
   if (!is.na(grups)) {
     ngrups=length(table(dt[grups]))
     Etiqueta_pob_inicial=pob_lab[1]
-    Npob_inicial=dt %>% count() %>% as.numeric() }
+    Npob_inicial=dt %>% count() %>% as.numeric()}
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
-  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% select(camp,!!etiquetes,!!ordre,!!criteris)
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
