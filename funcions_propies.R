@@ -70,7 +70,7 @@ ActualitzarConductor<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx") {
   # d=dades
   
   # Llegir conductor
-  variables<-readxl::read_excel(taulavariables)
+  variables<-readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
 
   # Si el format es xls exportar a xls cambiar de format
   if (readxl::excel_format(taulavariables)=="xls") {
@@ -134,7 +134,7 @@ ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc
   #------------------------------------#
   
   # Llegir conductor
-  variables<-readxl::read_excel(taulavariables)
+  variables<-readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   
   # Si el format es xls exportar a xls cambiar de format
   if (readxl::excel_format(taulavariables)=="xls") {
@@ -173,7 +173,7 @@ ActualitzarConductor2<-function(d=dades,taulavariables="VARIABLES_R3b.xlsx",lloc
   openxlsx::conditionalFormatting(wb, sheet=1, cols=1:(n2), rows=(n):(n+1000),rule="!=0",style =posStyle)
   #----------------------------------------------------------#
   openxlsx::saveWorkbook(wb, file = taulavariables, overwrite = TRUE)
-  variables2<-readxl::read_excel(taulavariables)
+  variables2<-readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   #----------------------------------------------------------# 
   x<- rep(" ", times = n2-length(my.vec))
   my.vec2    <- c(my.vec,x)
@@ -287,12 +287,13 @@ llistaNomenada <- function(...) {
 ###
 etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio") {
   
-  # d=dades
-  # taulavariables = conductor_variables
+  # d=dt_plana
+  # taulavariables = conductor
   # camp_descripcio="descripcio"
 
   #  Llegir etiquetes i variables a analitzar ####
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
+
   variables[is.na(variables)]<- 0
 
   # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
@@ -327,7 +328,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   # camp_etiqueta="etiqueta"
   
   # Llegir conductor#
-  variables_factors<-readxl::read_excel(variables_factors,sheet=fulla)
+  variables_factors<-readxl::read_excel(variables_factors,sheet=fulla) %>% tidyr::as_tibble()
   #
  
   # Split
@@ -374,7 +375,7 @@ etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="varia
   # camp_descripcio="descripcio"
   
   ####  Llegir etiquetes i variables a analitzar ####
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   #
   
@@ -420,7 +421,7 @@ formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="va
   
   # 1. Llegir conductor analisis 
   
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   
   # 2. DATA table filtrar ordenar llista de camps
@@ -508,7 +509,7 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls",vari
   # taulavariables = conductor_variables
   
   ####  Llegir etiquetes i variables a analitzar ####
-  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables <- data.frame(readxl::read_excel(taulavariables)) %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
 
   taula<-rlang::sym(taula)
@@ -584,7 +585,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   # prefix=NA
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   
   criteris_sym<-sym(criteris)
@@ -668,7 +669,7 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   # rang="rang_valid"
   
   # Llegir dades
-  variables<-readxl::read_excel(conductor_variables,col_types = "text")
+  variables<-readxl::read_excel(conductor_variables,col_types = "text") %>% tidyr::as_tibble()
   temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid)) 
   
   # Separo limit inferior i limit superior
@@ -782,7 +783,7 @@ missings_to_level<-function(dades,variable="popes") {
 
 formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls",codievent='1') {
   
-  variables <- data.frame(readxl::read_excel(taulavariables))
+  variables <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble() )
   variables[is.na(variables)]<- 0
   variables<-variables %>% arrange_(x)
   
@@ -862,7 +863,7 @@ HRestratificats<-function(event="exitus",t="temps",tipo="v.ajust",c="",taulavari
   HRestratificats=data.frame()
   outDf<-data.frame(Subgroup="Total",HRadj(x=tipo,event=event,t=t,d=dades,c=c))
 
-  variables2 <- data.frame(readxl::read_excel(taulavariables))
+  variables2 <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble())
   variables2[is.na(variables2)]<- 0
   
   # row.names(outDf)<-label(dades$exitus)
@@ -2086,7 +2087,7 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
   # taulavariables = conductor_variables
 
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   
   llistavariables<-eval(parse(text=paste("variables$camp[variables$",var,">0]",sep="")))
@@ -3148,7 +3149,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     dplyr::mutate_if(is.character,funs(str_trim(.)))
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables,col_types = "text")
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
@@ -3230,7 +3231,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     Npob_inicial=dt %>% count() %>% as.numeric() }
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
-  variables <- readxl::read_excel(taulavariables,col_types = "text")
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
@@ -3986,7 +3987,7 @@ convertir_dates<-function(d=dadestotal,taulavariables="variables_R.xls",campdata
   
 {
   ####  Llegir etiquetes i variables a analitzar  ##
-  variables <- readxl::read_excel(taulavariables)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() 
   variables[is.na(variables)]<- 0
   #
   #
