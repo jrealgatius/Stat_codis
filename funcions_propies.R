@@ -293,9 +293,9 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
 
   #  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-
-  variables[is.na(variables)]<- 0
-
+  # variables[is.na(variables)]<- 0
+  variables<-variables %>% dplyr::filter(!is.na(camp))
+  
   # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
   camp_descripcio<-sym(camp_descripcio)
   
@@ -376,8 +376,9 @@ etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="varia
   
   ####  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  variables[is.na(variables)]<- 0
-  #
+  # variables[is.na(variables)]<- 0
+  camp_sym<-sym(camp)
+  variables<-variables %>% dplyr::filter(!is.na(!!camp_sym))
   
   # Canviar nom de camp de variables al de la taula 
   colnames(variables)[colnames(variables)=="camp"] <- camp
@@ -420,10 +421,8 @@ formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="va
   # dt=dades
   
   # 1. Llegir conductor analisis 
-  
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  variables[is.na(variables)]<- 0
-  
+
   # 2. DATA table filtrar ordenar llista de camps
   polio<-data.table::data.table(variables)
 
@@ -505,21 +504,22 @@ selectorvariables=function(taula="table1",taulavariables="variables_R.xls",dt=da
 #
 extreure.variables=function(taula="table1",taulavariables="variables_R.xls",variable_camp="camp") {
   
-  # taula="dates"
-  # taulavariables = conductor_variables
+  taula="matching"
+  taulavariables = conductor
+  variable_camp="camp"
   
   ####  Llegir etiquetes i variables a analitzar ####
-  variables <- data.frame(readxl::read_excel(taulavariables)) %>% tidyr::as_tibble()
-  variables[is.na(variables)]<- 0
-
-  taula<-rlang::sym(taula)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(!!variable_camp,!!taula)
   
+  taula<-rlang::sym(taula)
+  variables<-variables %>% dplyr::filter(!is.na(!!taula_sym))
+  # variables[is.na(variables)]<- 0
+
   # filtratge 
-  kk<-variables %>% dplyr::filter(!!taula>0) %>% dplyr::arrange(!!taula) %>% dplyr::select_(variable_camp) %>% as.vector()
+  kk<-variables %>% dplyr::arrange(!!taula) %>% dplyr::select(!!variable_camp) %>% as.vector()
   kk<-as.vector(kk[[1]])
   purrr::set_names(kk,kk)
   
-
 }
 
 #  factoritzar NO.Yes  ------------------
@@ -585,11 +585,12 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   # prefix=NA
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  variables[is.na(variables)]<- 0
+  # variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
+  # variables[is.na(variables)]<- 0
   
-  criteris_sym<-sym(criteris)
-  variables<-variables %>% dplyr::filter(!!criteris_sym!=0)
+  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(camp,!!criteris)
+  criteris_sym<-rlang::sym(criteris)
+  variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
 
   ##  0. Filtro taula variables només variables implicades en el filtre i el genero 
   caracter_quartil<-"Q"
@@ -783,8 +784,11 @@ missings_to_level<-function(dades,variable="popes") {
 
 formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls",codievent='1') {
   
-  variables <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble() )
-  variables[is.na(variables)]<- 0
+  variables <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble())
+  # variables[is.na(variables)]<- 0
+  x_sym<-rlang::sym(x)
+  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
+  
   variables<-variables %>% arrange_(x)
   
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
@@ -903,10 +907,13 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
 
   # Llegir variables 
   variables <- data.frame(readxl::read_excel(taulavariables))
-  variables[is.na(variables)]<- 0
-  
+  # variables[is.na(variables)]<- 0
   x_sym<-sym(x)
 
+  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
+  
+  
+  
   llistataula<-variables %>%
     dplyr::filter(!!x_sym>0) %>%
     dplyr::arrange(!!x_sym) %>% 
@@ -928,9 +935,9 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
 formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls') {
 
   variables <- data.frame(readxl::read_excel(taulavariables))
-  variables[is.na(variables)]<- 0
-  
-  x<-sym(x)
+  # variables[is.na(variables)]<- 0
+  x_sym<-rlang::sym(x)
+  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
   
   variables<-variables %>% 
     dplyr::filter(!!x>0) %>% 
@@ -979,10 +986,14 @@ OR.ajustats=function(x="lipos",ajust="V.ajust",y="prediabetis",d=dadestotal,taul
   # ajust="v.ajust"
   # y="Prediabetes"
   
-  
   #
   variables <- data.frame(readxl::read_excel(taulavariables))
-  variables[is.na(variables)]<- 0
+  # variables[is.na(variables)]<- 0
+  x_sym<-rlang::sym(x)
+  ajust_sym<-rlang::sym(ajust)
+  variables<-variables %>% dplyr::filter(!is.na(!!x_sym) | !is.na(ajust_sym) )
+  
+  
   # inicialitzar 
   num<-paste("length(variables[variables$",x,">0,]$camp)",sep="")
   num<-eval(parse(text=num))
@@ -2088,7 +2099,9 @@ extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIAB
 
   ##  Llegeix criteris de variables 
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  variables[is.na(variables)]<- 0
+  # variables[is.na(variables)]<- 0
+  var_sym<-rlang::sym(var)
+  variables<-variables %>% dplyr::filter(!is.na(!!var_sym))
   
   llistavariables<-eval(parse(text=paste("variables$camp[variables$",var,">0]",sep="")))
   
@@ -3154,7 +3167,6 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
   # Filtrar valors
   criteris_sym<-sym(criteris)
   variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
-  
   # variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
@@ -3241,7 +3253,6 @@ criteris_exclusio_diagrama<-function(dt=dades,
   # Filtrar valors
   criteris_sym<-sym(criteris)
   variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
-  
   # variables[is.na(variables)]<- 0
   # variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
@@ -3998,7 +4009,11 @@ convertir_dates<-function(d=dadestotal,taulavariables="variables_R.xls",campdata
 {
   ####  Llegir etiquetes i variables a analitzar  ##
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() 
-  variables[is.na(variables)]<- 0
+  # variables[is.na(variables)]<- 0
+  campdata_sym<-sym(campdata)
+  variables<-variables %>% dplyr::filter(!is.na(!!campdata_sym))
+
+  
   #
   #
   # etiquetar variables         
