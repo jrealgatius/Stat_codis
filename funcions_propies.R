@@ -3150,7 +3150,12 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
   
   ##  Llegeix criteris de variables 
   variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% dplyr::select(camp,!!criteris)
-  variables[is.na(variables)]<- 0
+  
+  # Filtrar valors
+  criteris_sym<-sym(criteris)
+  variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
+  
+  # variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
   char_logics<-c(">",">=","<","<=","==","!=","is.na") %>% paste0(collapse = '|')
@@ -3232,8 +3237,13 @@ criteris_exclusio_diagrama<-function(dt=dades,
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
   variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% dplyr::select(camp,!!etiquetes,!!ordre,!!criteris)
-  variables[is.na(variables)]<- 0
-  variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
+  
+  # Filtrar valors
+  criteris_sym<-sym(criteris)
+  variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
+  
+  # variables[is.na(variables)]<- 0
+  # variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
   # Parar si no hi ha criteris d'exclusió
   if (variables %>% count() %>% as.numeric()==0) {
