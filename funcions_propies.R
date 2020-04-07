@@ -510,13 +510,12 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls",vari
   
   ####  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(!!variable_camp,!!taula)
-  
   taula_sym<-rlang::sym(taula)
   variables<-variables %>% dplyr::filter(!is.na(!!taula_sym))
   # variables[is.na(variables)]<- 0
 
   # filtratge 
-  kk<-variables %>% dplyr::arrange(!!taula) %>% dplyr::select(!!variable_camp) %>% as.vector()
+  kk<-variables %>% dplyr::arrange(!!taula_sym) %>% dplyr::select(!!variable_camp) %>% as.vector()
   kk<-as.vector(kk[[1]])
   purrr::set_names(kk,kk)
   
@@ -789,7 +788,7 @@ formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="
   x_sym<-rlang::sym(x)
   variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
   
-  variables<-variables %>% arrange_(x)
+  variables<-variables %>% arrange(!!x_sym)
   
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
   
@@ -940,8 +939,8 @@ formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavaria
   variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
   
   variables<-variables %>% 
-    dplyr::filter(!!x>0) %>% 
-    dplyr::arrange(!!x)
+    dplyr::filter(!!x_sym>0) %>% 
+    dplyr::arrange(!!x_sym)
   
   
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
