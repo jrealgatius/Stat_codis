@@ -511,7 +511,7 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls",vari
   ####  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(!!variable_camp,!!taula)
   
-  taula<-rlang::sym(taula)
+  taula_sym<-rlang::sym(taula)
   variables<-variables %>% dplyr::filter(!is.na(!!taula_sym))
   # variables[is.na(variables)]<- 0
 
