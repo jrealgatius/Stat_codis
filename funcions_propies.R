@@ -504,9 +504,9 @@ selectorvariables=function(taula="table1",taulavariables="variables_R.xls",dt=da
 #
 extreure.variables=function(taula="table1",taulavariables="variables_R.xls",variable_camp="camp") {
   
-  taula="matching"
-  taulavariables = conductor
-  variable_camp="camp"
+  # taula="matching"
+  # taulavariables = conductor
+  # variable_camp="camp"
   
   ####  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(!!variable_camp,!!taula)
