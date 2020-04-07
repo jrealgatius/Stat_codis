@@ -3149,7 +3149,7 @@ criteris_exclusio<-function(dt=dades,taulavariables="VARIABLES_R3b.xls",criteris
     dplyr::mutate_if(is.character,funs(str_trim(.)))
   
   ##  Llegeix criteris de variables 
-  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% select(camp,!!criteris)
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% dplyr::select(camp,!!criteris)
   variables[is.na(variables)]<- 0
   
   # llista de caracters logics del filtre
@@ -3231,7 +3231,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     Npob_inicial=dt %>% count() %>% as.numeric()}
   
   ##  Llegeixo criteris de variables i selecciono variables amb filtres 
-  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% select(camp,!!etiquetes,!!ordre,!!criteris)
+  variables <- readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble() %>% dplyr::select(camp,!!etiquetes,!!ordre,!!criteris)
   variables[is.na(variables)]<- 0
   variables<-variables %>% dplyr::filter_(paste0(criteris,"!=0")) 
  
@@ -3333,7 +3333,7 @@ criteris_exclusio_diagrama<-function(dt=dades,
     }
 
   # Si un grup no te exclusions s'ha d'afegir una fila missing 
-  nivells_grup<-datatemp %>% select(grup) %>% distinct() %>% pull()
+  nivells_grup<-datatemp %>% dplyr::select(grup) %>% distinct() %>% pull()
   
   num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[1]))
   num_criteris<-num_criteris %>% bind_rows(tibble(grup=nivells_grup[2]))
