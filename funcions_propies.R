@@ -1943,27 +1943,32 @@ MAP_valor_ggplot<-function(
 
 #  HR.COX  --------------------
 ####      funció que retorna MATRIU-->Ngran, Events, HR, IC951, IC952, p 
-HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls") { 
+HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls",c="") { 
   
-  # x="ajust3_obj2"
-  # event="EV_IAM_DIC"
-  # t="temps_EV_IAM"
-  # d=dadestotal
+  # x="v.ajust"
+  # event = "event_tbc"
+  # t="temps_tbc"
+  # d=dades
   # taulavariables = conductor_variables
   # e=""
+  # c="case.id"
+  
+  if (c=="") posicio_p=5
+  if (c!="") posicio_p=6
   
   pepito<-paste("sum(d$",t,")",sep="")
   PT<-eval(parse(text=pepito))
   
   result=tryCatch({
-    pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,taulavariables = taulavariables),data=d)    
+    # pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,taulavariables = taulavariables),data=d)    
+    pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables),data=d) 
     
     cbind(N=pp$n,
           EVENTS=pp$nevent,
           HRadjusted=summary(pp)$coef[,2],
           IC951=summary(pp)$conf.int[,3],
           IC952=summary(pp)$conf.int[,4],
-          p=summary(pp)$coef[,5])}
+          p=summary(pp)$coef[,posicio_p])}
     
     ,error = function(e)  {
       cbind(N=0,
@@ -1976,6 +1981,7 @@ HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dade
   )
   result
 }
+
 
 #  HR CRUS ------------------
 
