@@ -669,7 +669,7 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   # rang="rang_valid"
   
   # Llegir dades
-  variables<-readxl::read_excel(conductor_variables,col_types = "text") %>% tidyr::as_tibble()
+  variables<-readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
   temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid)) 
   
   # Separo limit inferior i limit superior
