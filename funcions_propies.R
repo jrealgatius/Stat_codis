@@ -5026,7 +5026,65 @@ regicor <- function(age, sex, smoker, diabetes, coltot, colhdl, sbp, dbp, divide
   result
 }
 
-#30.Setembre.2019#
+
+
+formula.text_millora<-function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=dt_plana) {
+  
+  #x="Taula00"
+  #y=""
+  #taulavariables = conductor
+  #eliminar =""
+  #a=""
+  #dt=dt_plana
+  
+  dt2<-variable.names(dt)
+  
+  variables <- data.frame(readxl::read_excel(taulavariables))
+  
+  x_sym<-rlang::sym(x)
+  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
+  
+  variables<-variables %>% 
+    dplyr::filter(!!x_sym>0) %>% 
+    dplyr::arrange(!!x_sym)
+  
+  pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
+  
+  llistataula<-eval(parse(text=pepito))
+  
+  varsquefalten<-llistataula[!(c(llistataula)%in%colnames(dt))] %>% paste0(collapse = ", ")
+  count <- length(varsquefalten)
+  
+  if (varsquefalten==""){
+    count=0
+  }
+  
+  
+  if(count>0){
+    return(print(paste0("missing Variable! ", varsquefalten)))
+  }
+  
+  kk<-llistataula%in%dt2
+  kk<-llistataula[kk]
+  kk<-kk[!is.na(kk)]
+  llistataula<-kk
+  
+  if (a!="") llistataula<-c(a,llistataula,a)
+  
+  y<-paste(y, paste(llistataula, collapse=" + "), sep=" ~ ")
+  
+  y
+  
+  
+  
+}
+
+
+
+
+
+
+#29.Abril.2020#
 
 
 #      FI GENERAR FUNCIONs  
