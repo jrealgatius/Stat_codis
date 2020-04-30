@@ -931,7 +931,7 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
 
 #####     x= variables d'ajust / y = resposta / eliminar /  a = Avaluar 
 
-formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls') {
+formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=NA) {
 
   variables <- data.frame(readxl::read_excel(taulavariables))
   # variables[is.na(variables)]<- 0
@@ -942,13 +942,15 @@ formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavaria
     dplyr::filter(!!x_sym>0) %>% 
     dplyr::arrange(!!x_sym)
   
+  # Verificar si dades estan en conductor
+  if (is.data.frame(dt)) {
+    vars_not_dt<-variables %>% anti_join(names(dt) %>% as_tibble(camp=value),by=c("camp"="value"))
+    variables<-variables %>% semi_join(names(dt) %>% as_tibble(camp=value),by=c("camp"="value"))
+    warning(paste0("Variables not in data ",vars_not_dt["camp"], ". So, it is not included in formula"))}
   
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
   
-
   llistataula<-eval(parse(text=pepito))
-  
-  # if (a!="") llistataula<-c(llistataula,a)
   if (a!="") llistataula<-c(a,llistataula,a)
   
   y<-paste(y, paste(llistataula, collapse=" + "), sep=" ~ ")
@@ -5027,64 +5029,6 @@ regicor <- function(age, sex, smoker, diabetes, coltot, colhdl, sbp, dbp, divide
 }
 
 
-
-formula.text_millora<-function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=dt_plana) {
-  
-  #x="Taula00"
-  #y=""
-  #taulavariables = conductor
-  #eliminar =""
-  #a=""
-  #dt=dt_plana
-  
-  dt2<-variable.names(dt)
-  
-  variables <- data.frame(readxl::read_excel(taulavariables))
-  
-  x_sym<-rlang::sym(x)
-  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
-  
-  variables<-variables %>% 
-    dplyr::filter(!!x_sym>0) %>% 
-    dplyr::arrange(!!x_sym)
-  
-  pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
-  
-  llistataula<-eval(parse(text=pepito))
-  
-  varsquefalten<-llistataula[!(c(llistataula)%in%colnames(dt))] %>% paste0(collapse = ", ")
-  count <- length(varsquefalten)
-  
-  if (varsquefalten==""){
-    count=0
-  }
-  
-  
-  if(count>0){
-    return(print(paste0("missing Variable! ", varsquefalten)))
-  }
-  
-  kk<-llistataula%in%dt2
-  kk<-llistataula[kk]
-  kk<-kk[!is.na(kk)]
-  llistataula<-kk
-  
-  if (a!="") llistataula<-c(a,llistataula,a)
-  
-  y<-paste(y, paste(llistataula, collapse=" + "), sep=" ~ ")
-  
-  y
-  
-  
-  
-}
-
-
-
-
-
-
-#29.Abril.2020#
 
 
 #      FI GENERAR FUNCIONs  
