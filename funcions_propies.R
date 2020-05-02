@@ -1879,7 +1879,8 @@ MAP_valor_ggplot<-function(
   grup_color="agr",
   Nmostra=1,
   finestraX=c(-Inf,Inf),
-  llavor=123
+  llavor=123,
+  title="Evolució de valors"
 ) 
 {
   
@@ -1928,7 +1929,7 @@ MAP_valor_ggplot<-function(
     
     geom_point(aes(!!datainicial, !!val),color="black")+
     
-    labs(title = "Evolució de valors")+ theme(plot.title = element_text(size=30,hjust = 0.5))+
+    labs(title = title)+ theme(plot.title = element_text(size=25,hjust = 0.5))+
     
     theme(axis.text = element_text(colour = "black",size = 10))+  
     theme(panel.grid.major = element_line(colour = "grey80",size=0.001))+
