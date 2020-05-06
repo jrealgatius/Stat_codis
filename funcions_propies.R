@@ -1134,6 +1134,8 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 #  EXTREU COEFICIENTS glm, IC95 , p valors  GLM a outcome, X, i llista de v.ajust 
 extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   
+  # dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=""
+  
   # dt=dades_long %>% filter(.imp==0)
   # outcome="MPR.TX.cat"
   # outcome="HBA1C.dif324m"
@@ -1176,7 +1178,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
       mutate(Beta=Estimate,
              Linf=(Estimate-(1.97*`Std. Error`)) ,
              Lsup=(Estimate+(1.97*`Std. Error`)))
-  }
+    }
   
   # Si X es factor afegir cat de ref + mean 
   es_factor<- any(dt[[x]] %>% class() %in% c("character","factor"))
@@ -1204,11 +1206,11 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
 ## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
 extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="") {
   
-  # dt=mice::as.mids(dades)
-  # outcome="HBA1C.dif324m"
-  # x="grup_IDPP4"
+  # dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust
+  # dt=mice::as.mids(dades_long)
+  # outcome=outcome
+  # x=grups
   # v.ajust=c("sexe","edat","qmedea")
-  
   
   ### Hi ha variables d'ajust genero formula llista
   if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
@@ -1222,7 +1224,7 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   
     resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
 
-    resum_model<-tibble(categoria=row.names(resum)) %>% 
+    resum_model<-tibble(categoria=resum$term) %>% 
       cbind(resum) %>% 
       mutate(OR=estimate %>% exp,
              Linf=(estimate-(1.97*std.error)) %>% exp,
@@ -1231,12 +1233,13 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   
   # Si outcome (Y) es numeric --> GLM lineal
   if (!outcome_es_factor) {
-    
+
     # pepe<-paste0(outcome,"~",x) 
     model_mi<-with(dt,lm(eval(parse(text=pepe))))
-    resum<-summary(mice::pool(model_mi))
-    resum_model<-tibble(categoria=row.names(resum)) %>% cbind(resum)
-  }
+    resum<-base::summary(mice::pool(model_mi))
+    resum_model<-tibble(categoria=resum$term) %>% cbind(resum)
+ 
+    }
   
   # Si X  es cat afegir categoria de referencia
   es_factor<- any(dt$data[[x]] %>% class() %in% c("character","factor"))
@@ -1244,21 +1247,23 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
   if (is.numeric(dt$data[[x]])) Ncat.x=1 else Ncat.x<-sum(table(dt$data[x])!=0)
   
   if (es_factor) {
-    resumtotal<-tibble(categoria=row.names(resum)[1:Ncat.x],outcome=outcome) %>% 
+    resumtotal<-
+      tibble(categoria=resum$term[1:Ncat.x],outcome=outcome) %>% 
       add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
-  }
+    }
   
   # Si no es factor
-  if (!es_factor) {resumtotal<-tibble(categoria=row.names(resum),outcome=outcome) }
+  if (!es_factor) {resumtotal<-tibble(categoria=resum$term,outcome=outcome) }
   
   # Afegir categoria 
-  resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  
+  resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  %>% select(-term)
   
   # Només en GLM calcular la mitjana estimada per categoria 
   if (outcome_es_factor==F) { 
-    resumtotal<-resumtotal %>% mutate (beta0=resumtotal$estimate[1],estimate=ifelse(is.na(estimate),0,estimate)) %>%  
-      mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) 
-    }
+    resumtotal<-resumtotal %>% 
+      mutate (beta0=resumtotal$estimate[1],
+              estimate=ifelse(is.na(estimate),0,estimate)) %>%  
+      mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) }
   
   # Seleccionar columnes
   resumtotal %>% head(Ncat.x+1)
@@ -1400,7 +1405,9 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 # Objecte dades_long es fitxer de dades amb dades completes (.imp==0) + imputades (.imp>0)
 extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
   
-  # dades_long=dades
+  # dades_long=dades_temp,outcome=llista_outcomes[2],grups="grup",v.ajust=vector_ajust
+  
+  # dades_long=dades_temp
   # outcome="MPR.TX.cat"
   # grups="grup"
   # outcome="HBA1C.dif324m"
