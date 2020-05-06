@@ -1132,7 +1132,7 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 }
 
 #  EXTREU COEFICIENTS glm, IC95 , p valors  GLM a outcome, X, i llista de v.ajust 
-extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
+extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",level_conf=0.95){
   
   # dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=""
   
@@ -1141,7 +1141,10 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
   # outcome="HBA1C.dif324m"
   # x="grup"
   # v.ajust=""
-
+  # level_conf=0.95
+  
+  Zalfa=qnorm((1-level_conf)/2,lower.tail=FALSE)
+  
   outcome_sym<-rlang::sym(outcome)
 
   # Número de categories de X
@@ -1163,8 +1166,8 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% as_tibble() %>% 
       mutate(OR=Estimate %>% exp(),
-             Linf=(Estimate-(1.97*`Std. Error`)) %>% exp(),
-             Lsup=(Estimate+(1.97*`Std. Error`)) %>% exp())
+             Linf=(Estimate-(Zalfa*`Std. Error`)) %>% exp(),
+             Lsup=(Estimate+(Zalfa*`Std. Error`)) %>% exp())
     
     }
   
@@ -1176,8 +1179,8 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% as_tibble() %>% 
       mutate(Beta=Estimate,
-             Linf=(Estimate-(1.97*`Std. Error`)) ,
-             Lsup=(Estimate+(1.97*`Std. Error`)))
+             Linf=(Estimate-(Zalfa*`Std. Error`)) ,
+             Lsup=(Estimate+(Zalfa*`Std. Error`)))
     }
   
   # Si X es factor afegir cat de ref + mean 
@@ -1204,13 +1207,16 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust=""){
 
 #  GLM (Logistic o Lineal) dades imputades -------------------- 
 ## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
-extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="") {
+extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="",level_conf=0.95) {
   
   # dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust
   # dt=mice::as.mids(dades_long)
   # outcome=outcome
   # x=grups
   # v.ajust=c("sexe","edat","qmedea")
+  # level_conf=0.95
+  
+  Zalfa=qnorm((1-level_conf)/2,lower.tail=FALSE)
   
   ### Hi ha variables d'ajust genero formula llista
   if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
@@ -1227,8 +1233,8 @@ extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",
     resum_model<-tibble(categoria=resum$term) %>% 
       cbind(resum) %>% 
       mutate(OR=estimate %>% exp,
-             Linf=(estimate-(1.97*std.error)) %>% exp,
-             Lsup=(estimate+(1.97*std.error)) %>% exp)
+             Linf=(estimate-(Zalfa*std.error)) %>% exp,
+             Lsup=(estimate+(Zalfa*std.error)) %>% exp)
       }
   
   # Si outcome (Y) es numeric --> GLM lineal
@@ -1403,10 +1409,9 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 
 # Funció que retorna summari (Beta/OR , IC95%, mean) amb dades imputades i completes crudes i ajustades d'un outcome en relació a un grup
 # Objecte dades_long es fitxer de dades amb dades completes (.imp==0) + imputades (.imp>0)
-extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat")) {
+extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat"),level_conf=0.95) {
   
   # dades_long=dades_temp,outcome=llista_outcomes[2],grups="grup",v.ajust=vector_ajust
-  
   # dades_long=dades_temp
   # outcome="MPR.TX.cat"
   # grups="grup"
@@ -1415,38 +1420,43 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   # v.ajust=c("sexe","edat")
   # v.ajust=vector_ajust
 
+  
+  Zalfa=stats::qnorm((1-level_conf)/2,lower.tail=FALSE)
+  
   # Outcome es factor?
   outcome_es_factor<-any(dades_long[[outcome]] %>% class() %in% c("character","factor"))
   
+  # Outcome numerica -> Retorna Btes
   if (!outcome_es_factor) {
 
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
-      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean)
     
     dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
-      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - (1.97*`std.error`),Lsup=estimate + (1.97*`std.error`),p.value, mean)
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean)
     
-    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
       transmute (datos="Completos",type="Adjusted",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
     
-    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="") %>% 
+    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
       transmute (datos="Completos",type="Crudas",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
     
   }
   
+  # Outcome factor -> Retornar OR's
   if (outcome_es_factor) {
     # Outcome categoric
-    dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+    dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
       transmute(datos="Imputados",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value)
     
-    dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
+    dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
       transmute(datos="Imputados",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value)
     
-    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
+    dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
       transmute (datos="Completos",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
     
-    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="") %>% 
+    dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
       transmute (datos="Completos",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
     
   }
