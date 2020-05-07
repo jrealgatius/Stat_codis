@@ -369,25 +369,23 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
 
 etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="variables_R.xls",camp_descripcio="descripcio") {
   
-  # taula=T3.MI
+  # taula=dt_estimacions
   # taulavariables=conductor_variables
-  # camp="variables_taula"
+  # camp="datos"
   # camp_descripcio="descripcio"
-  
+
   ####  Llegir etiquetes i variables a analitzar ####
   variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  # variables[is.na(variables)]<- 0
   camp_sym<-sym(camp)
-  variables<-variables %>% dplyr::filter(!is.na(!!camp_sym))
-  
+
   # Canviar nom de camp de variables al de la taula 
   colnames(variables)[colnames(variables)=="camp"] <- camp
-  
+
   # Canviar arguments per ser evaluats
   camp_eval<-sym(camp)
   camp_descripcio_eval<-sym(camp_descripcio)
   # Canviar el format de la taula 
-  taula<-taula %>% left_join(dplyr::select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
+  taula %>% left_join(dplyr::select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
     mutate(!!camp_eval:=descripcio) %>% 
     dplyr::select(-descripcio)
  
