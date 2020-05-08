@@ -1133,6 +1133,11 @@ extreure_coef_glm<-function(dt=dades,outcomes="OFT_WORST",x="DM",z="",taulavaria
 extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",level_conf=0.95){
   
   # dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=""
+  # dt=dades_long %>% filter(.imp==0)
+  # outcome=outcome
+  # x=grups
+  # v.ajust=v.ajust
+  # level_conf=level_conf
   
   # dt=dades_long %>% filter(.imp==0)
   # outcome="MPR.TX.cat"
@@ -1144,7 +1149,7 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",le
   Zalfa=qnorm((1-level_conf)/2,lower.tail=FALSE)
   
   outcome_sym<-rlang::sym(outcome)
-
+  
   # Número de categories de X
   Ncat.x<-sum(table(dt[x])!=0)
   if (is.numeric(dt[[x]])) Ncat.x=1
@@ -1155,11 +1160,18 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",le
   
   # Outcome es factor?
   outcome_es_factor<-any(dt[[outcome]] %>% class() %in% c("character","factor"))
-
+  
   # Si Outcome (Y) es factor --> glm-Logistica
   if (outcome_es_factor) {
     
-    resum<-glm(eval(parse(text=pepe)),family = binomial(link="logit"),data=dt) %>% summary %>% coef()
+    fit<-glm(eval(parse(text=pepe)),family = binomial(link="logit"),data=dt)
+    resum<-fit %>% summary %>% coef()
+    
+    # Estandarditzar
+    resumStd<-parameters::model_parameters(fit,standardize="basic",ci=level_conf) %>% select(c(1:5),-SE) %>% 
+      rename(term=Parameter, CIStd_low=CI_low,CIStd_high=CI_high) %>% 
+      mutate(term=as.factor(term))
+    resum<-resum %>% cbind(resumStd)
     
     resum_model<-tibble(categoria=row.names(resum)) %>% 
       cbind(resum) %>% as_tibble() %>% 
@@ -1167,19 +1179,26 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",le
              Linf=(Estimate-(Zalfa*`Std. Error`)) %>% exp(),
              Lsup=(Estimate+(Zalfa*`Std. Error`)) %>% exp())
     
-    }
+  }
   
   # Si Outcome (Y) es numerica --> glm-lineal 
   if (!outcome_es_factor) {
     
-    resum<-glm(as.formula(pepe),family = gaussian, data= dt) %>% summary %>% coef()
+    fit<-glm(as.formula(pepe),family = gaussian, data= dt)
+    resum<-fit %>% summary %>% coef()
+    
+    # Estandarditzar
+    resumStd<-parameters::model_parameters(fit,standardize="basic",ci=level_conf) %>% select(c(1:5),-SE) %>% 
+      rename(term=Parameter, CIStd_low=CI_low,CIStd_high=CI_high) %>% 
+      mutate(term=as.factor(term))
+    resum<-resum %>% cbind(resumStd)
     
     resum_model<-tibble(categoria=row.names(resum)) %>% 
-      cbind(resum) %>% as_tibble() %>% 
+      cbind(resum) %>% as_tibble() %>% select(-term) %>% 
       mutate(Beta=Estimate,
              Linf=(Estimate-(Zalfa*`Std. Error`)) ,
              Lsup=(Estimate+(Zalfa*`Std. Error`)))
-    }
+  }
   
   # Si X es factor afegir cat de ref + mean 
   es_factor<- any(dt[[x]] %>% class() %in% c("character","factor"))
@@ -1206,74 +1225,98 @@ extreure_coef_glm_v2<-function(dt=dades,outcome="OFT_WORST",x="DM",v.ajust="",le
 #  GLM (Logistic o Lineal) dades imputades -------------------- 
 ## Retorn de coeficients glm() amb dades imputades d'una variable independent X ~ Y 
 extreure_coef_glm_mi<-function(dt=tempData,outcome="valor612M.GLICADA",x="SEXE",v.ajust="",level_conf=0.95) {
-  
-  # dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust
-  # dt=mice::as.mids(dades_long)
-  # outcome=outcome
-  # x=grups
-  # v.ajust=c("sexe","edat","qmedea")
-  # level_conf=0.95
-  
-  Zalfa=qnorm((1-level_conf)/2,lower.tail=FALSE)
-  
-  ### Hi ha variables d'ajust genero formula llista
-  if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
-  if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
-  
-  # Outcome es factor?
-  outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
-
-  # Si Outcome (Y) es factor --> glm-Logistica
-  if (outcome_es_factor) {
-  
-    resum<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) %>% mice::pool() %>% summary() 
-
-    resum_model<-tibble(categoria=resum$term) %>% 
-      cbind(resum) %>% 
-      mutate(OR=estimate %>% exp,
-             Linf=(estimate-(Zalfa*std.error)) %>% exp,
-             Lsup=(estimate+(Zalfa*std.error)) %>% exp)
-      }
-  
-  # Si outcome (Y) es numeric --> GLM lineal
-  if (!outcome_es_factor) {
-
-    # pepe<-paste0(outcome,"~",x) 
-    model_mi<-with(dt,lm(eval(parse(text=pepe))))
-    resum<-base::summary(mice::pool(model_mi))
-    resum_model<-tibble(categoria=resum$term) %>% cbind(resum)
- 
+    
+    # dt=mice::as.mids(dades_long)
+    # outcome=outcome
+    # x=grups
+    # v.ajust=v.ajust
+    # v.ajust=c("sexe","edat","qmedea")
+    # level_conf=0.95
+    
+    # Funció que extreu parametres estandaritzats Overall (mitjana Cutre)
+    Standarditzar_mice_fits<-function(fits,level_conf=0.95) {
+      pars_Std<-fits$analyses %>% 
+        map(~parameters::model_parameters(.x,standardize="basic",ci=level_conf)) %>% 
+        bind_rows() %>% data.frame() %>% 
+        group_by(Parameter) %>% 
+        summarise_all(base::mean) %>% 
+        select(c(1:5),-SE) %>% 
+        rename(term=Parameter, CIStd_low=CI_low,CIStd_high=CI_high) %>% mutate(term=as.factor(term))}
+    
+    # Z per confidence interval
+    Zalfa=qnorm((1-level_conf)/2,lower.tail=FALSE)
+    
+    ### Hi ha variables d'ajust genero formula llista
+    if (any(v.ajust!="")) pepe<-paste0(outcome,"~",paste0(c(x,v.ajust),collapse = " + "))
+    if (any(v.ajust=="")) pepe<-paste0(outcome,"~",x) 
+    
+    # Outcome es factor?
+    outcome_es_factor<-any(dt$data[[outcome]] %>% class() %in% c("character","factor"))
+    
+    # Si Outcome (Y) es factor --> glm-Logistica
+    if (outcome_es_factor) {
+      
+      fits<-with(dt,glm(eval(parse(text=pepe)),family = binomial(link="logit"))) 
+      
+      resum<-fits %>% mice::pool() %>% summary() 
+      
+      # Resum estandarditzat i ho fusiono
+      resum_Std<-Standarditzar_mice_fits(fits,level_conf) 
+      resum<-resum %>% left_join(resum_Std,by="term")
+      
+      resum_model<-tibble(categoria=resum$term) %>% 
+        cbind(resum) %>% 
+        mutate(OR=estimate %>% exp,
+               Linf=(estimate-(Zalfa*std.error)) %>% exp,
+               Lsup=(estimate+(Zalfa*std.error)) %>% exp)
     }
-  
-  # Si X  es cat afegir categoria de referencia
-  es_factor<- any(dt$data[[x]] %>% class() %in% c("character","factor"))
-  # Número de categories de X i selecciono files de X
-  if (is.numeric(dt$data[[x]])) Ncat.x=1 else Ncat.x<-sum(table(dt$data[x])!=0)
-  
-  if (es_factor) {
-    resumtotal<-
-      tibble(categoria=resum$term[1:Ncat.x],outcome=outcome) %>% 
-      add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
+    
+    # Si outcome (Y) es numeric --> GLM lineal
+    if (!outcome_es_factor) {
+      
+      # pepe<-paste0(outcome,"~",x) 
+      fits<-with(dt,lm(eval(parse(text=pepe))))
+      
+      resum<-base::summary(mice::pool(fits))
+      
+      # Resum estandarditzat i fusiono
+      resum_Std<-Standarditzar_mice_fits(fits,level_conf) 
+      resum<-resum %>% left_join(resum_Std,by="term")
+      
+      resum_model<-tibble(categoria=resum$term) %>% cbind(resum)
+      
     }
-  
-  # Si no es factor
-  if (!es_factor) {resumtotal<-tibble(categoria=resum$term,outcome=outcome) }
-  
-  # Afegir categoria 
-  resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  %>% select(-term)
-  
-  # Només en GLM calcular la mitjana estimada per categoria 
-  if (outcome_es_factor==F) { 
-    resumtotal<-resumtotal %>% 
-      mutate (beta0=resumtotal$estimate[1],
-              estimate=ifelse(is.na(estimate),0,estimate)) %>%  
-      mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) }
-  
-  # Seleccionar columnes
-  resumtotal %>% head(Ncat.x+1)
-
+    
+    # Si X  es cat afegir categoria de referencia
+    es_factor<- any(dt$data[[x]] %>% class() %in% c("character","factor"))
+    # Número de categories de X i selecciono files de X
+    if (is.numeric(dt$data[[x]])) Ncat.x=1 else Ncat.x<-sum(table(dt$data[x])!=0)
+    
+    if (es_factor) {
+      resumtotal<-
+        tibble(categoria=resum$term[1:Ncat.x],outcome=outcome) %>% 
+        add_row (categoria=paste0(x,".Ref"),outcome=outcome) 
+    }
+    
+    # Si no es factor
+    if (!es_factor) {resumtotal<-tibble(categoria=resum$term,outcome=outcome) }
+    
+    # Afegir categoria 
+    resumtotal<-resumtotal %>% left_join(resum_model,by="categoria")  %>% select(-term)
+    
+    # Només en GLM calcular la mitjana estimada per categoria 
+    if (outcome_es_factor==F) { 
+      resumtotal<-resumtotal %>% 
+        mutate (beta0=resumtotal$estimate[1],
+                estimate=ifelse(is.na(estimate),0,estimate)) %>%  
+        mutate(mean=ifelse(categoria!="(Intercept)", beta0+estimate,NA)) }
+    
+    # Seleccionar columnes
+    resumtotal %>% head(Ncat.x+1)
+    
 }
-
+  
+  
 #  Coeficients GLM(lineal/logistica) MICE estratificats  ---------------------
 # Arguments: Objecte MICE i data_list imputats, vector de X , Y , logit=T/F 
 extreure_coef_mice_estrats<-function(tempData,data_list,X=c("bmi","hyp"),Y="chl",grups="age",logit=F) {
@@ -1409,15 +1452,12 @@ extreure.dif.proporcions<-function(dades,outcome="Prediabetes",ref_cat=NA,grups=
 # Objecte dades_long es fitxer de dades amb dades completes (.imp==0) + imputades (.imp>0)
 extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif324m",grups="grup",v.ajust=c("sexe","edat"),level_conf=0.95) {
   
-  # dades_long=dades_temp,outcome=llista_outcomes[2],grups="grup",v.ajust=vector_ajust
   # dades_long=dades_temp
-  # outcome="MPR.TX.cat"
+  # outcome="HBA1C.dif324m.cat"
   # grups="grup"
-  # outcome="HBA1C.dif324m"
-  # grups="grup_ISGLT2"
+  # level_conf=0.95
   # v.ajust=c("sexe","edat")
-  # v.ajust=vector_ajust
-
+  
   
   Zalfa=stats::qnorm((1-level_conf)/2,lower.tail=FALSE)
   
@@ -1426,19 +1466,23 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   
   # Outcome numerica -> Retorna Btes
   if (!outcome_es_factor) {
-
+    
     # Proves per extreure coeficients (Dades imputades, completes, estimacions crues i ajustades)
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust) %>% 
-      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean)
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,estimate,std.error,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean,
+                Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="") %>% 
-      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean)
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,estimate,std.error,Linf=estimate - (Zalfa*`std.error`),Lsup=estimate + (Zalfa*`std.error`),p.value, mean,
+                Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
-      transmute (datos="Completos",type="Adjusted",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
+      transmute (datos="Completos",type="Adjusted",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean,estimate=Estimate,std.error=`Std. Error`,
+                 Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
-      transmute (datos="Completos",type="Crudas",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean)
+      transmute (datos="Completos",type="Crudas",categoria,outcome,estimate,Linf,Lsup,p.value=`Pr(>|t|)`,mean,estimate=Estimate,std.error=`Std. Error`,
+                 Std_Coefficient,CIStd_low,CIStd_high)
     
   }
   
@@ -1446,23 +1490,25 @@ extreure_resum_outcomes_imputation<-function(dades_long=dades,outcome="HBA1C.dif
   if (outcome_es_factor) {
     # Outcome categoric
     dt_estimaciones1<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
-      transmute(datos="Imputados",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value)
+      transmute(datos="Imputados",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value,estimate,std.error,Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones2<-extreure_coef_glm_mi(dt=mice::as.mids(dades_long),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
-      transmute(datos="Imputados",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value)
+      transmute(datos="Imputados",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value,estimate,std.error,Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones3<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust=v.ajust,level_conf=level_conf) %>% 
-      transmute (datos="Completos",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
+      transmute (datos="Completos",type="Adjusted",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`,estimate=Estimate,std.error=`Std. Error`,
+                 Std_Coefficient,CIStd_low,CIStd_high)
     
     dt_estimaciones4<-extreure_coef_glm_v2(dt=dades_long %>% filter(.imp==0),outcome=outcome,x=grups,v.ajust="",level_conf=level_conf) %>% 
-      transmute (datos="Completos",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`)
+      transmute (datos="Completos",type="Crudas",categoria,outcome,OR,Linf,Lsup,p.value=`Pr(>|z|)`,estimate=Estimate,std.error=`Std. Error`,
+                 Std_Coefficient,CIStd_low,CIStd_high)
     
   }
   
   # Juntar-ho tot
   dt_estimaciones_resumen<-dt_estimaciones1 %>% bind_rows(dt_estimaciones2) %>%  bind_rows(dt_estimaciones3) %>%  bind_rows(dt_estimaciones4)
   # Descriptivo datos completos
-
+  
   dt_estimaciones_resumen
   
 }
@@ -3971,6 +4017,73 @@ forest.plot.v2<-function(dadesmodel=ramo,label="Categoria",mean="OR",lower="Linf
   fp
   
 }
+
+
+# Forest plot versió 3
+forest.plot.v3<-function(dadesmodel=dt_estimacions,label="Categoria",mean="estimate",lower="Linf",upper="Lsup",label_X="OR (95% CI)",
+                         intercept=0,
+                         nivell="outcome", factor1="type",factor2="datos", color=TRUE) {
+  
+  # dadesmodel=dt_estimacions
+  # label="labels"
+  # mean="estimate"
+  # lower = "Linf"
+  # upper="Lsup"
+  # label_X="Differences standardized (95% CI)"
+  # intercept = 0
+  # nivell="outcome"
+  # factor1="type"
+  # factor2="datos"
+  # color=TRUE
+  
+  
+  # Generar data set 
+  dadesmodel <- dadesmodel %>% select(valor=!!mean,Linf=!!lower,Lsup=!!upper,nivell=!!nivell, factor1=!!factor1,factor2=!!factor2)
+  
+  ## Preparar taula (Genero etiqueta)
+  taula_betas<-dadesmodel %>% mutate(etiqueta=paste0("     ",factor2," ",factor1),
+                                     Method = paste0(factor2," ",factor1))
+  
+  # Afegir fila com un punt nivell per outcome i genero label de group
+  taula_betas<-taula_betas %>% split(.$nivell) %>% 
+    map_dfr(~add_row(.x,.before = 0),.id = "outcome" ) %>% 
+    mutate (etiqueta2=if_else(is.na(etiqueta),outcome,"")) %>% 
+    mutate (etiqueta=if_else(is.na(etiqueta),outcome,etiqueta))
+  
+  # AFegir etiqueta 3 mes centrada
+  taula_betas<-taula_betas %>% mutate(etiqueta3=lag(etiqueta2),
+                                      etiqueta3=if_else(is.na(etiqueta3),"",etiqueta3))
+  
+  # Generar id 
+  taula_betas<-taula_betas %>% mutate(id=seq(n())) %>% mutate(id=n()-id+1)
+  
+  # REomplir missings en factor1 i factor2
+  taula_betas<-taula_betas %>% fill(c(factor1,factor2,Method),.direction="updown")
+  
+  # Relevel mateix ordre tal com surt taula   
+  ordre_levels<-taula_betas %>% pull(Method) %>% unique()
+  taula_betas$Method<-factor(taula_betas$Method, levels = ordre_levels)
+  
+  fp <- ggplot(data=taula_betas,aes(x=id, y=valor, ymin=Linf, ymax=Lsup)) +
+    geom_pointrange(size=0.2) + 
+    geom_hline(yintercept=intercept, lty=1) +  # add a dotted line at x=1 after flip
+    coord_flip() +  # flip coordinates (puts labels on y axis)
+    xlab("Outcome") + ylab(label_X) +
+    scale_x_continuous(breaks=taula_betas %>% pull(id),labels=taula_betas %>% pull(etiqueta3))
+  
+  fp<-fp + theme_minimal() + theme(axis.text.y = element_text(hjust = 0,vjust=0,size=10)) 
+  
+  if (color) {fp<-fp + geom_point(aes(color=Method),size=3)} else 
+  {fp<-fp + geom_point(aes(shape=Method),size=3)}
+  
+  # Add banda d'error
+  fp<-fp + geom_hline(yintercept = c(intercept+0.1,intercept-0.1),linetype=2)
+  
+  fp 
+  
+}
+
+
 
 
 #  DATA RANDOM ENTRE DUES DATES (dataini i datafi) ---------------
