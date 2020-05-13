@@ -2967,17 +2967,18 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
 #  Arguments: Historic de PRESCRIPCIONS, data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0)  
 #  Requereix:(idp,cod,dat,dbaixa(yyyymmdd)) i Cataleg d'agrupadors amb cod, agr
 # 
-agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregadors=CATALEG,prefix="FP.",finestra.dies=c(0,0),camp_agregador="agr",agregar_data=F){
-  
+agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregadors=CATALEG,prefix="FP.",finestra.dies=c(0,0),camp_agregador="agr",agregar_data=F, acumular=NULL){
+
+  # dt=dt_prescrits_dosis
+  # bd.dindex=dt_dindex
+  # dt.agregadors=conductor_idpp4
+  # prefix="FP."
+  # finestra.dies=c(0,90)
   # camp_agregador="agr"
   # agregar_data=F
-  # dt=FX.PRESCRITS
-  # prefix = "FD."
-  # bd.dindex =bdades_index
-  # finestra.dies=c(-45,-45)
-  # dt.agregadors=CATALEG
-  
-  
+  # acumular="dosis_dia"
+  # acumular=NULL
+
   # Recode numeros infinits
   finestra.dies=ifelse(finestra.dies==+Inf,99999,finestra.dies)
   finestra.dies=ifelse(finestra.dies==-Inf,-99999,finestra.dies)
@@ -2998,25 +2999,42 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
   dt.agregadors<-dt.agregadors %>% filter(!is.na(agr))
   
   prescripcions_agr<-dt %>% 
-    dplyr::select(idp,dtindex,cod,dat,dbaixa) %>%
+  dplyr::select(idp,dtindex,cod,dat,dbaixa, acumular) %>%
   # Calculo els dies de solapament per codi (cod) 
     dplyr::mutate(overlap = pmax(pmin(dtindex+lubridate::days(finestra.dies[2]), dbaixa) - pmax(dtindex+lubridate::days(finestra.dies[1]), dat) + 1,0),
                   overlap=as.numeric(overlap)) %>%
     filter(overlap>0) # Elimino els que no xafen la finestra (overlap==0) 
-    
+  
   # Capturo l'agregador cataleg i elimino repetits
+  if (is.null(acumular)) {
   prescripcions_agr<-prescripcions_agr %>% 
     dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%       # Capturo agregador del cataleg
-    dplyr::distinct(idp,dtindex,cod,agr,.keep_all = TRUE)                          # Eliminar duplicats PER idp-dtindex-cod-agr 
+    dplyr::distinct(idp,dtindex,cod,agr,.keep_all = TRUE)              # Eliminar duplicats PER idp-dtindex-cod-agr 
+    }
   
- # Agregació de temps acumulats (dies) o primera data dins finestra 
-  if (!(agregar_data)) {
+  if (!is.null(acumular)) {
+    acumular<-rlang::sym(acumular)
+    prescripcions_agr<-prescripcions_agr %>% 
+      dplyr::inner_join(dplyr::select(dt.agregadors,c(cod,agr)), by="cod") %>%       # Capturo agregador del cataleg
+      dplyr::distinct(idp,dtindex,cod,agr,!!acumular,.keep_all = TRUE)              # Eliminar duplicats PER idp-dtindex-cod-agr 
+      }
+  
+  
+ # Agregació de temps acumulats (dies) / o dosis o primera data dins finestra 
+  if (!(agregar_data) & is.null(acumular)) {
   # suma dies acumulats
   prescripcions_agr<-prescripcions_agr %>%
     dplyr::group_by(idp,dtindex,agr) %>% 
     dplyr::summarise(FX=sum(overlap,na.rm=T)) %>% 
     dplyr::ungroup() }
-      
+ 
+  # Si hi ha dada (i.e dosis) per acumular 
+  if (!is.null(acumular)) {
+    prescripcions_agr<-prescripcions_agr %>%
+      dplyr::group_by(idp,dtindex,agr) %>% 
+      dplyr::summarise(FX=sum(overlap*!!acumular,na.rm=T)) %>% 
+      dplyr::ungroup() }
+    
   #  Si s'ha d'agregar la primera data de prescripció dins finestra de temps 
   if (agregar_data) {
     
@@ -3033,8 +3051,7 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
       dplyr::slice(which.min(dat)) %>%                  #
       dplyr::ungroup() %>% 
       dplyr::rename(FX=dat)}
-  
-  
+ 
   # Aplanamenta
   prescripcions_agr<-prescripcions_agr %>% tidyr::spread(agr,FX,sep=".")
       
@@ -3050,7 +3067,8 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
 #  Arguments: historic de facturacions (PRESCRIPCIONS) , data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0) 
 #  Requereix dt=(idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
 agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F){
-  
+
+
   # dt=dt_facturats
   # finestra.dies = c(-365,0)
   # camp_agregador="agr"
@@ -3085,12 +3103,6 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   # Filtro missings en dtindex (Si no peta)
   dt<-dt %>% filter(!is.na(dtindex))
   
-  # Elimino funcions de llibreria lubridate / les torno a posar
-  # pepito<-dt %>% dplyr::mutate (
-  #   data=paste0(as.character(dat),"15") %>% as.Date('%Y%m%d'),    # Data arrodonida al dia 15
-  #   datafi=data+(env*30),                  # Genero data fi en funció dels envasos
-  #   dtindex=as.Date(dtindex,'%Y%m%d'))
-
   pepito<-dt %>% dplyr::mutate (
     data=lubridate::ymd(paste0(as.character(dat),"15")),    # Data arrodonida al dia 15
     datafi=data+(env*30),                  # Genero data fi en funció dels envasos
