@@ -320,13 +320,14 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
 ##    Retorna Data frame etiquetat en funció d'un conductor ##
 ## dataframe dades, conductor_variables     
 etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla="etiquetes",
-                           camp_etiqueta="etiqueta"){
+                           camp_etiqueta="etiqueta",missings=F) {
   
   # dt=dades
   # variables_factors=conductor_variables
-  # fulla="etiquetes_valors"
-  # camp_etiqueta="etiqueta"
-  
+  # fulla="nacionalitats"
+  # camp_etiqueta="etiqueta2"
+  # missings=T
+
   # Llegir conductor#
   variables_factors<-readxl::read_excel(variables_factors,sheet=fulla) %>% tidyr::as_tibble()
   #
@@ -346,16 +347,16 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   dt[sapply(dt,is.character)] <- lapply(dt[sapply(dt,is.character)], trimws)
   
   for (i in 1:num_vars) {
-    
   # i<-1
-  
   if (noms_variables[i] %in% colnames(dt)) {
     
     etiquetes_valors<-pepe[[i]] %>% pull(!!camp_etiqueta)
     dt[noms_variables[i]]<-lapply(dt[noms_variables[i]],function(y) factor(y,levels=pepe[[i]]$valor,labels=etiquetes_valors))
-     }
-  
-  }
+    
+    if (missings) dt<-missings_to_level(dt,noms_variables[i])
+    
+      }
+    }
   
   dt
   
