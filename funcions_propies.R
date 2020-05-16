@@ -3067,16 +3067,17 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
 #  Retorna tibble (data.table) amb la suma d'envasos o data primera dispensació dins d'una finestra de temps per idp-dataindex      
 #  Arguments: historic de facturacions (PRESCRIPCIONS) , data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0) 
 #  Requereix dt=(idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
-agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F){
+agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F,acumular=NULL){
 
-
-  # dt=dt_facturats
-  # finestra.dies = c(-365,0)
+  
+  # dt=dt_facturats_dosis
+  # finestra.dies = c(0,90)
   # camp_agregador="agr"
-  # dt.agregadors = dt_cataleg
-  # bd.dindex = dt_dataindex
-  # prefix="FD."
-  # agregar_data=T
+  # dt.agregadors = conductor_idpp4
+  # bd.dindex = dt_dindex
+  # prefix="FDD1."
+  # agregar_data=F
+  # acumular="DD_env"
   
   agregador_sym<-sym(camp_agregador)
   ## Filtrar CATALEG per agrupador per camp_agregador
@@ -3137,7 +3138,6 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
   print("Agregant facturacio")
   
   if (!(agregar_data)) {
-    
     dt_agregada <- pepito %>%                   # Agrego --> Suma de numero d'envasos per idp-dtindex-agr 
       dplyr::select(c(idp,dtindex,agr,env)) %>% 
       as_tibble() %>% 
@@ -3145,6 +3145,18 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
       dplyr::summarise(FX=sum(env,na.rm=T)) %>% 
       dplyr::ungroup()
   }
+
+  # Acumulat de dosis (per exemple)
+  if (!is.null(acumular)) {
+    acumular<-rlang::sym(acumular)
+    dt_agregada <- pepito %>%                   # Agrego --> Suma d'indicador acumulat per idp-dtindex-agr 
+      dplyr::select(c(idp,dtindex,agr,!!acumular)) %>% 
+      as_tibble() %>% 
+      dplyr::group_by(idp,dtindex,agr) %>% 
+      dplyr::summarise(FX=sum(!!acumular,na.rm=T)) %>% 
+      dplyr::ungroup()
+    
+    }
 
   #  Si s'ha d'agregar data primera Facturació
   if (agregar_data){
