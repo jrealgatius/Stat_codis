@@ -476,7 +476,7 @@ formula=function(x="taula1",y="grup",eliminar=c("idp",y)) {
 # Te en compte l'Ordre que està posada en el conductor taulavariables
 #
 #
-formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="variables_R.xls", dt="No") {
+formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="variables_R.xls", dt="No",...) {
   
   # x="table5"
   # y="grup"
@@ -485,8 +485,10 @@ formula_compare=function(x="taula1",y="grup",elimina=c("IDP"),taulavariables="va
   # dt=dades
   
   # 1. Llegir conductor analisis 
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-
+  # variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
+  variables <- read_conductor(taulavariables,...) %>% tidyr::as_tibble()
+  
+  
   # 2. DATA table filtrar ordenar llista de camps
   polio<-data.table::data.table(variables)
 
@@ -996,9 +998,11 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
 
 #####     x= variables d'ajust / y = resposta / eliminar /  a = Avaluar 
 
-formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=NA) {
+formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=NA,...) {
 
-  variables <- data.frame(readxl::read_excel(taulavariables))
+  # variables <- data.frame(readxl::read_excel(taulavariables))
+  variables <- read_conductor(taulavariables,...) %>% data.frame()
+  
   # variables[is.na(variables)]<- 0
   x_sym<-rlang::sym(x)
   variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
@@ -2222,7 +2226,7 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
 
 
 # CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades  --------------
-extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls") {
+extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls",...) {
   
   # var1="HbA1c"
   # var="lipos2"
