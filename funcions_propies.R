@@ -325,13 +325,12 @@ llistaNomenada <- function(...) {
 ###
 etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio") {
   
-  # d=dt_plana
-  # taulavariables = conductor
-  # camp_descripcio="descripcio"
+  # d=dades
+  # taulavariables = conductor_variables
+  # camp_descripcio="etiqueta2"
 
   #  Llegir etiquetes i variables a analitzar ####
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  # variables[is.na(variables)]<- 0
+  variables<-read_conductor(taulavariables)
   variables<-variables %>% dplyr::filter(!is.na(camp))
   
   # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
@@ -340,7 +339,7 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
   variables<-variables %>% dplyr::select(camp,descripcio=!!camp_descripcio) 
   
   # Els que no tenen etiquet assignar el mateix nom del camp
-  variables<-variables %>% mutate(descripcio=ifelse(descripcio=="0",camp,descripcio)) 
+  variables<-variables %>% mutate(descripcio=ifelse(descripcio=="0" | is.na(descripcio),camp,descripcio)) 
   
   #
   # Etiquetar variables         
