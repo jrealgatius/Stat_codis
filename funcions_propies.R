@@ -357,18 +357,19 @@ etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripci
 ##    Retorna Data frame etiquetat en funció d'un conductor ##
 ## dataframe dades, conductor_variables     
 etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla="etiquetes",
-                           camp_etiqueta="etiqueta",missings=F) {
+                           camp_etiqueta="etiqueta",missings=F, new_vars=F,sufix=".2") {
   
   # dt=dades
   # variables_factors=conductor_variables
   # fulla="nacionalitats"
-  # camp_etiqueta="etiqueta2"
+  # camp_etiqueta="etiqueta3"
   # missings=T
+  # new_vars=T
+  # sufix=".2"
 
   # Llegir conductor#
   variables_factors<-readxl::read_excel(variables_factors,sheet=fulla) %>% tidyr::as_tibble()
-  #
- 
+
   # Split
   camp_etiqueta<-sym(camp_etiqueta)
   
@@ -394,6 +395,11 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
     
       }
     }
+  
+  # Si new_vars, selecciono renombro i fusiono a t 
+  if (new_vars) {
+    dt_temp<-dt %>% as_tibble() %>% select(noms_variables) %>% rename_at(noms_variables,function(x) paste0(x,sufix)) 
+    dt<-cbind(dt,dt_temp) %>% as_tibble()}
   
   dt
   
