@@ -362,7 +362,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   # dt=dades
   # variables_factors=conductor_variables
   # fulla="nacionalitats"
-  # camp_etiqueta="etiqueta3"
+  # camp_etiqueta="etiqueta2"
   # missings=T
   # new_vars=T
   # sufix=".2"
@@ -384,6 +384,8 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   dt[sapply(dt,is.factor)] <- lapply(dt[sapply(dt,is.factor)], trimws)
   dt[sapply(dt,is.character)] <- lapply(dt[sapply(dt,is.character)], trimws)
   
+  dt_original<-dt # Faig copia original
+  
   for (i in 1:num_vars) {
   # i<-1
   if (noms_variables[i] %in% colnames(dt)) {
@@ -396,11 +398,11 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
       }
     }
   
-  # Si new_vars, selecciono renombro i fusiono a t 
+  # Si new_vars, selecciono renombro i fusiono a dt original 
   if (new_vars) {
-    dt_temp<-dt %>% as_tibble() %>% select(noms_variables) %>% rename_at(noms_variables,function(x) paste0(x,sufix)) 
-    dt<-cbind(dt,dt_temp) %>% as_tibble()}
-  
+    dt_recode<-dt %>% as_tibble() %>% select(noms_variables) %>% rename_at(noms_variables,function(x) paste0(x,sufix)) 
+    dt<-dplyr::cbind(dt_original,dt_recode) %>% as_tibble()}
+
   dt
   
   }
