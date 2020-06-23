@@ -401,7 +401,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   # Si new_vars, selecciono renombro i fusiono a dt original 
   if (new_vars) {
     dt_recode<-dt %>% as_tibble() %>% select(noms_variables) %>% rename_at(noms_variables,function(x) paste0(x,sufix)) 
-    dt<-dplyr::cbind(dt_original,dt_recode) %>% as_tibble()}
+    dt<-cbind(dt_original,dt_recode) %>% as_tibble()}
 
   dt
   
