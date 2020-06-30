@@ -4361,6 +4361,96 @@ dt_index_data_semirandom<-function(dt=PACIENTS,dt.variables=VARIABLES,codi="EK20
   
 }
 
+# Funció que retorna 4 grups aparellats per 4 grups (2 x 2) de 2 variables
+# Entra una base de dades (dades) i una variable factor amb 4 nivells 
+# Retorna dades aparellades en dos fases a) 1vs3 2vs4  Fusió --> b) 1vs2 3vs4 
+
+
+matching_4grups<-function(dt=dadesini,grups="grup", vars_match="matching",conductor="vars_ilerbus.xls",caliper=0.01) {
+  
+  # dt=dadesini
+  # grups="grup"
+  # caliper=0.01
+  # vars_match="matching"
+  # conductor="vars_ilerbus.xls"
+  
+  set.seed(123)
+  
+  # Formula matching
+  formulaPS<-formula.text("matching",y="grup_dic",taulavariables=conductor) %>% as.formula()
+  
+  # Genero index de grup
+  dt_temp<-dt %>% select(!!grups) %>% distinct() %>% mutate(id_grup=row_number())
+  # Fusiono id_grup 
+  dt<-dt %>% left_join(dt_temp)  # + id_grup
+  
+  #  -----------------  1 vs 3 ---------------------- dades_match13  
+  dades<-dt %>% filter(id_grup==1 | id_grup==3 ) # Filtro dos grups
+  
+  # Dicotomitzar id_grup 
+  dades<-make_dummies(dades,"id_grup","gr_") 
+  names(dades)[length(names(dades))]<-"grup_dic"
+  
+  # MATCHING 1VS3
+  m.out<-matchit(formulaPS,method="nearest",data=dades,caliper=caliper,ratio=1,exact=c("gender"))
+  # Filtro per ps
+  dades_match_13<-dades %>% bind_cols(ps=m.out$weights) %>% filter(ps==1) %>% select(-ps)
+  
+  #  -----------------  2 vs 4 ---------------------- dades_match13  
+  dades<-dt %>% filter(id_grup==2 | id_grup==4 ) # Filtro dos grups
+  # Validació prematch
+  
+  # Dicotomitzar id_grup 
+  dades<-make_dummies(dades,"id_grup","gr_") 
+  names(dades)[length(names(dades))]<-"grup_dic"
+  
+  # Matching 2VS4
+  m.out<-matchit(formulaPS,method="nearest",data=dades,caliper=caliper,ratio=1,exact=c("gender"))
+  
+  # Filtro per ps
+  dades_match_24<-dades %>% bind_cols(ps=m.out$weights) %>% filter(ps==1) %>% select(-ps)
+  
+  # -------------------  Actualitzar dt amb dades només matxejades --- 
+  dt<-dades_match_13 %>% bind_rows(dades_match_24) %>% select(-c(gr_2,gr_1,grup_dic))
+  
+  #  -----------------  1 vs 2 ---------------------- dades_match12  
+  dades<-dt %>% filter(id_grup==1 | id_grup==2 ) # Filtro dos grups
+  # Validació prematch
+  formu<-formula.text("match_desc","grup",taulavariables = conductor)
+  
+  # Dicotomitzar id_grup 
+  dades<-make_dummies(dades,"id_grup","gr_") 
+  names(dades)[length(names(dades))]<-"grup_dic"
+  
+  # MATCHING 1VS2 
+  m.out<-matchit(formulaPS,method="nearest",data=dades,caliper=caliper,ratio=1,exact=c("gender"))
+  
+  # Filtro per ps
+  dades_match_12<-dades %>% bind_cols(ps=m.out$weights) %>% filter(ps==1) %>% select(-ps)
+  
+  #  -----------------  3 vs 4 ---------------------- dades_match12  
+  dades<-dt %>% filter(id_grup==3 | id_grup==4 ) # Filtro dos grups
+  
+  # Dicotomitzar id_grup 
+  dades<-make_dummies(dades,"id_grup","gr_") 
+  names(dades)[length(names(dades))]<-"grup_dic"
+  
+  # MATCHING 3VS4 
+  m.out<-matchit(formulaPS,method="nearest",data=dades,caliper=caliper,ratio=1,exact=c("gender"))
+  # Filtro per ps
+  dades_match_34<-dades %>% bind_cols(ps=m.out$weights) %>% filter(ps==1) %>% select(-ps)
+  
+  # Fusionar dades 
+  # Juntar tot
+  
+  # -------------------  Actualitzar dt amb dades només matxejades --- 
+  dt<-dades_match_12 %>% bind_rows(dades_match_34) %>% select(-c(gr_1,gr_3,grup_dic))
+  
+}
+
+
+
+
 
 #  MATCHING CAS-CONTROL SEGONS MÉTODE DENSITY-INCIDENCE ------------------
 
