@@ -325,9 +325,9 @@ llistaNomenada <- function(...) {
 ###
 etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio") {
   
-  d=iris
-  taulavariables = etiquetes_iris
-  camp_descripcio="descripcio"
+  # d=iris
+  # taulavariables = etiquetes_iris
+  # camp_descripcio="descripcio"
 
   #  Llegir etiquetes i variables a analitzar ####
   variables<-read_conductor(taulavariables)
@@ -651,19 +651,16 @@ factoritzar<-function(dt=dades,variables=c("grup","situacio")) {
 ### RETORNA DADES AMB RECODIFICACIÓ 
 recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1",missings=F,prefix=NA){
   
-  # dt=dades
-  # taulavariables = conductor_variables
-  # criteris = "recodes2"
+  # dt=iris
+  # taulavariables = etiquetes_iris
+  # criteris = "recode"
   # missings=F
   # prefix=NA
   
   ##  Llegeix criteris de variables 
-  # variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
-  # variables[is.na(variables)]<- 0
-  
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble() %>% dplyr::select(camp,!!criteris)
+  variables<-read_conductor(taulavariables) %>% dplyr::select(camp,!!criteris) %>% mutate_all(as.character)
   criteris_sym<-rlang::sym(criteris)
-  variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym))
+  variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym) & !!criteris_sym!="")
 
   ##  0. Filtro taula variables només variables implicades en el filtre i el genero 
   caracter_quartil<-"Q"
@@ -752,7 +749,7 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   
   # Inicio blucle
   num_recodes<-length(temp[,1])
-  # Assignar a primer element (A partir d'aquÃ� fer un for)
+  # Assignar a primer element (A partir d'aquÃ? fer un for)
   
   if (data_long==F) {
     
@@ -1080,7 +1077,6 @@ formula_table1=function(x="taula1",y="",eliminar=c("IDP"), a="",taulavariables='
   # dt=NA
   
   variables <- read_conductor(taulavariables,...) %>% data.frame()
-  variables <- read_conductor(taulavariables) %>% data.frame()
   
   # variables[is.na(variables)]<- 0
   x_sym<-rlang::sym(x)
