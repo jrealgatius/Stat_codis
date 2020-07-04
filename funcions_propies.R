@@ -736,10 +736,10 @@ make_dummies <- function(dt,variable, prefix = '') {
 
 
 # Recodificar rangs de valors que cauen fora interva a missings  -----------------
-recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid") {
+recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid", data_long=F) {
   
-  # dt=dades
-  # taulavariables=conductor_variables
+  # dt=dt_plana_covid3_B
+  # taulavariables=conductor_codis2
   # rang="rang_valid"
   
   # Llegir dades
@@ -751,18 +751,36 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   temp<-temp %>% cbind(rangs)
   
   # Inicio blucle
-  
   num_recodes<-length(temp[,1])
-  # Assignar a primer element (A partir d'aquí fer un for)
+  # Assignar a primer element (A partir d'aquÃ� fer un for)
   
-  for (i in 1:num_recodes) {
-  # i<-2
-  camp<-temp[i,]$camp
-  linf<-temp[i,]$V1 %>% as.numeric()
-  lsup<-temp[i,]$V2%>% as.numeric()
+  if (data_long==F) {
+    
+    for (i in 1:num_recodes) {
+      # i<-1
+      camp<-temp[i,]$camp
+      linf<-temp[i,]$V1 %>% as.numeric()
+      lsup<-temp[i,]$V2%>% as.numeric()
+      
+      # Recode missings fora de rang 
+      dt<-dt %>% mutate_at(camp,~if_else(.<linf | .>lsup,NA_real_,.))
+    }
+    
+  }
   
-  # recodifico en missings els que estan fora de rang 
-  dt<-dt %>% mutate_at(camp,~if_else(.<linf | .>lsup,NA_real_,.))
+  # En cas de taula long 
+  if (data_long) {
+    
+    for (i in 1:num_recodes) {
+      # i<-1
+      camp<-temp[i,]$camp
+      linf<-temp[i,]$V1 %>% as.numeric()
+      lsup<-temp[i,]$V2%>% as.numeric()
+      # recodifico/filtro en missings els que estan fora de rang 
+      dt<-dt %>% 
+        mutate(valor=if_else((valor<linf | valor>lsup) & cod==camp ,NA_real_,valor)) %>% 
+        filter(!is.na(valor))
+    }
   }
   
   dt
