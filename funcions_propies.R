@@ -735,13 +735,22 @@ make_dummies <- function(dt,variable, prefix = '') {
 # Recodificar rangs de valors que cauen fora interva a missings  -----------------
 recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid", data_long=F) {
   
-  # dt=dt_plana_covid3_B
-  # taulavariables=conductor_codis2
+  # dt=dades2_matlab
+  # taulavariables=conductor_matlab
   # rang="rang_valid"
+  # data_long=F
   
   # Llegir dades
-  variables<-readxl::read_excel(taulavariables,col_types = "text") %>% tidyr::as_tibble()
-  temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid)) 
+  variables<-read_conductor(taulavariables) %>% tidyr::as_tibble()
+  
+  temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid))
+  
+  # Elimino () i [ ]
+  temp <- temp %>% mutate(rang_valid=stringr::str_replace_all(rang_valid,"\\(",""),
+                  rang_valid=stringr::str_replace_all(rang_valid,"\\)",""),
+                  rang_valid=stringr::str_replace_all(rang_valid,"\\[",""),
+                  rang_valid=stringr::str_replace_all(rang_valid,"\\]","")
+                    )
   
   # Separo limit inferior i limit superior
   rangs<-temp$rang_valid %>% stringr::str_split_fixed("-",2) %>% as_tibble()
@@ -754,7 +763,7 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   if (data_long==F) {
     
     for (i in 1:num_recodes) {
-      # i<-1
+      # i<-2
       camp<-temp[i,]$camp
       linf<-temp[i,]$V1 %>% as.numeric()
       lsup<-temp[i,]$V2%>% as.numeric()
