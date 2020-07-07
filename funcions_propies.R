@@ -733,7 +733,7 @@ make_dummies <- function(dt,variable, prefix = '') {
 
 
 # Recodificar rangs de valors que cauen fora interva a missings  -----------------
-recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid", data_long=F) {
+recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="rang_valid", data_long=F,...) {
   
   # dt=dades2_matlab
   # taulavariables=conductor_matlab
@@ -741,7 +741,8 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   # data_long=F
   
   # Llegir dades
-  variables<-read_conductor(taulavariables) %>% tidyr::as_tibble()
+  variables<-read_conductor(taulavariables,
+                            col_types = "text",...) %>% tidyr::as_tibble()
   
   temp<-variables %>% select(c("camp","rang_valid")) %>% filter(!is.na(rang_valid))
   
