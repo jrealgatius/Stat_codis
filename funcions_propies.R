@@ -793,6 +793,47 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
   
 }
 
+##  Canviar/ definir categoria de referencia en un llistat de variables posades en un conductor
+
+refcat<-function(DF=iris,conductor=conductor_iris,ref="ref_cat"){
+  # DF=iris
+  # conductor=conductor_iris
+  # ref="ref_cat"
+  
+  ref=rlang::sym(ref)
+  # llegeixo conductor informacio de refcats
+  conductor_df<-read_conductor(conductor) %>% select(camp,!!ref) %>% filter(!!ref!="") 
+  llista_vars<-conductor_df$camp %>% as.character()
+  
+  # Verificar si un nivell d'una variable existeix --> warning i eliminar la variable de conductor o llista de variables
+  algun_nivell<-function(var="Species") {
+    # var="Species"
+    if (!conductor_df %>% filter(camp==var) %>% select(!!ref) %>% as.character %in% levels(DF[[var]])) {
+      warning(paste0("Nivell erroni per variable: ",var))
+      conductor_df<-conductor_df %>% mutate(ref_cat=if_else(camp==var,"",!!ref))
+    } 
+    conductor_df
+  }
+  conductor_df<-reduce(llista_vars,~algun_nivell(.x))
+  
+  # Torno a filtrar variables sense nivells
+  conductor_df<-conductor_df %>% filter(!!ref!="") 
+  # Genero llista de vars
+  llista_vars<-conductor_df$camp %>% as.character()
+  llista_refcat<-conductor_df %>% pull(!!ref) 
+  
+  # Factoritzar variables i verificar nivells
+  DF<-DF %>% mutate_at(llista_vars,as.factor)
+  
+  # Faig el relevel a les comlumnes seleccionades
+  pp<-map2_df(DF %>% select(llista_vars),  llista_refcat, ~stats::relevel(.x, .y))
+  
+  # Ara intercanviar columnes 2 a 2 de
+  DF[llista_vars]<-pp[llista_vars]
+  DF
+  
+}
+
 
 
 # Retorna objecte Surv en dt a partir de dades (dt), event("20150531" / NA), dtindex(Date), dtsortida(20171231),  
@@ -1016,7 +1057,7 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
     dplyr::arrange(!!x_sym) %>% 
     pull(camp) 
   
-  llistataula<-llistataula[llistataula%nin% eliminar]
+  llistataula<-llistataula[llistataula%in% eliminar]
   
   if (a!="") llistataula<-c(a,llistataula)
   
