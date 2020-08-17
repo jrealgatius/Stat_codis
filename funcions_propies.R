@@ -796,14 +796,14 @@ recode_to_missings<-function(dt=dades,taulavariables=conductor_variables,rang="r
 
 ##  Canviar/ definir categoria de referencia en un llistat de variables posades en un conductor
 
-refcat<-function(DF=iris,conductor=conductor_iris,ref="ref_cat"){
+refcat<-function(DF=iris,conductor=conductor_iris,ref="ref_cat",...){
   # DF=dades_long_total
   # conductor=conductor_matlab
   # ref="ref_cat"
   
   ref=rlang::sym(ref)
   # llegeixo conductor informacio de refcats
-  conductor_df<-read_conductor(conductor) %>% select(camp,!!ref) %>% filter(!!ref!="") 
+  conductor_df<-read_conductor(conductor,...) %>% select(camp,!!ref) %>% filter(!!ref!="") 
   llista_vars<-conductor_df$camp %>% as.character()
   
   # Factoritzar variables i verificar nivells
