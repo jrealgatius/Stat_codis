@@ -2209,7 +2209,7 @@ MAP_valor_ggplot<-function(
 
 #  HR.COX  --------------------
 ####      funció que retorna MATRIU-->Ngran, Events, HR, IC951, IC952, p 
-HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls",c="") { 
+HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls",c="",...) { 
   
   # x="v.ajust"
   # event = "event_tbc"
@@ -2227,7 +2227,7 @@ HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dade
   
   result=tryCatch({
     # pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,taulavariables = taulavariables),data=d)    
-    pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables),data=d) 
+    pp<-survival::coxph(formulaCOX(x=x,event=event,temps=t,elimina=e,cluster=c,taulavariables = taulavariables,...),data=d) 
     
     cbind(N=pp$n,
           EVENTS=pp$nevent,
