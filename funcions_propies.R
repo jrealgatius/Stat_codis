@@ -596,7 +596,7 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls",vari
     }
   
   # filtratge 
-  kk<-variables %>% dplyr::arrange(!!taula_sym) %>% dplyr::select(!!variable_camp) %>% as.vector()
+  kk<-variables %>% dplyr::arrange(!!taula_sym) %>% dplyr::filter(!!taula_sym>0) %>% dplyr::select(!!variable_camp) %>% as.vector()
   kk<-as.vector(kk[[1]])
   purrr::set_names(kk,kk)
   
