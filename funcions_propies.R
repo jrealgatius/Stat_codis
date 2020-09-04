@@ -21,7 +21,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 # Llibreries necessaries 
 library("data.table")
-library("SNPassoc")
+# library("SNPassoc")
 library("htmlwidgets")
 library("compareGroups")
 library("foreign")
