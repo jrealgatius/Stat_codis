@@ -413,25 +413,29 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
 
 # Llanço taula i camp que vull etiquetar i cambia nom del camp en funció d'etiqueta
 
-etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="variables_R.xls",camp_descripcio="descripcio") {
+etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="variables_R.xls",camp_descripcio="descripcio",idcamp="camp") {
   
-  # taula=dt_estimacions
-  # taulavariables=conductor_variables
-  # camp="datos"
-  # camp_descripcio="descripcio"
+  # taula=porca
+  # taulavariables=conductor
+  # camp="Parameter"
+  # camp_descripcio="desc_model"
+  # idcamp="camp2"
 
   ####  Llegir etiquetes i variables a analitzar ####
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
+  variables <- read_conductor(taulavariables)
   camp_sym<-sym(camp)
+  idcamp_sym<-sym(camp_sym)
 
   # Canviar nom de camp de variables al de la taula 
-  colnames(variables)[colnames(variables)=="camp"] <- camp
+  # colnames(variables)[colnames(variables)=="camp"] <- camp
+  colnames(variables)[colnames(variables)==idcamp] <- camp
 
   # Canviar arguments per ser evaluats
   camp_eval<-sym(camp)
   camp_descripcio_eval<-sym(camp_descripcio)
   # Canviar el format de la taula 
   taula %>% left_join(dplyr::select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
+    rename(descripcio=!!camp_descripcio) %>% 
     mutate(!!camp_eval:=descripcio) %>% 
     dplyr::select(-descripcio)
  
