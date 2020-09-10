@@ -13,7 +13,7 @@
 # Jordi Real
 # jordireal@gmail.com
 
-list.of.packages <- c("compareGroups","survminer", "data.table","MatchIt","survival","dplyr","lubridate","purrr","stringr","readxl","Hmisc","knitr","SNPassoc","DiagrammeR","pROC","ResourceSelection")
+list.of.packages <- c("compareGroups","survminer", "data.table","MatchIt","survival","dplyr","lubridate","purrr","stringr","readxl","Hmisc","knitr","DiagrammeR","pROC","ResourceSelection")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 
@@ -21,7 +21,7 @@ if(length(new.packages)) install.packages(new.packages)
 
 # Llibreries necessaries 
 library("data.table")
-library("SNPassoc")
+# library("SNPassoc")
 library("htmlwidgets")
 library("compareGroups")
 library("foreign")
