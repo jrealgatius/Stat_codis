@@ -5362,14 +5362,14 @@ netejar.noms.variables<-function(dt=LIPOS_EORTEGA){
     stringr::str_trim() %>% 
     stringr::str_replace_all(" ","_") %>% 
     stringr::str_replace_all("-","_") %>%
-    stringr::str_replace_all("([.])\\1+","\\1")
-    
+    stringr::str_replace_all("([.])\\1+","\\1") %>% 
+    stringr::str_replace_all("\\*","") %>% 
+    stringr::str_replace_all("\\?","")
+  
   names(dt)<-paco
   dt
   
 }
-
-
 
 
 # Funció que elimina accents dels noms de les variables
