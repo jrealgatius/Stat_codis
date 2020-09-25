@@ -608,14 +608,14 @@ extreure.variables=function(taula="table1",taulavariables="variables_R.xls",vari
 
 #  factoritzar NO.Yes  ------------------
 ##########      factoritzar NO.Yes llista de variables "factor" situades a la taulavariables camp=factor
-factoritzar.NO.YES<-function(dt=dadesDF,columna="factor",taulavariables="variables_FELIPE.xls"){
+factoritzar.NO.YES<-function(dt=dadesDF,columna="factor",taulavariables="variables_FELIPE.xls",...){
   
   # dt=dades
   # columna="factor.YESNO"
   # taulavariables=conductor_variables
   
   # Extreure variables  
-  x<-extreure.variables(taula=columna,taulavariables=taulavariables) 
+  x<-extreure.variables(taula=columna,taulavariables=taulavariables,...) 
   
   # Seleccionar només variables que estan en dt
   if (!x[!x%in%names(dt)] %>% length()<1) {print("No existeixen en dt:");print(x[!x%in%names(dt)])}
