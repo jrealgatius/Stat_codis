@@ -5364,7 +5364,9 @@ netejar.noms.variables<-function(dt=LIPOS_EORTEGA){
     stringr::str_replace_all("-","_") %>%
     stringr::str_replace_all("([.])\\1+","\\1") %>% 
     stringr::str_replace_all("\\*","") %>% 
-    stringr::str_replace_all("\\?","")
+    stringr::str_replace_all("\\?","") %>% 
+    stringr::str_replace_all("\\<","Inf") %>% 
+    stringr::str_replace_all("\\>","Sup") 
   
   names(dt)<-paco
   dt
