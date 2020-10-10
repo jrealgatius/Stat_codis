@@ -323,14 +323,14 @@ llistaNomenada <- function(...) {
 #
 #  Etiquetar les variables de les dades      #####
 ###
-etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio") {
+etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio",...) {
   
   # d=iris
   # taulavariables = etiquetes_iris
   # camp_descripcio="descripcio"
 
   #  Llegir etiquetes i variables a analitzar ####
-  variables<-read_conductor(taulavariables)
+  variables<-read_conductor(taulavariables,...)
   variables<-variables %>% dplyr::filter(!is.na(camp))
   
   # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
