@@ -660,7 +660,7 @@ factoritzar<-function(dt=dades,variables=c("grup","situacio")) {
 
 #  Recodifico EN FUNCIÓ DE de llista de camps  -------------------
 ### RETORNA DADES AMB RECODIFICACIÓ 
-recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1",missings=F,prefix=NA){
+recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1",missings=F,prefix=NA,...){
   
   # dt=iris
   # taulavariables = etiquetes_iris
@@ -669,7 +669,7 @@ recodificar<-function(dt=dades,taulavariables="VARIABLES.xls",criteris="recode1"
   # prefix=NA
   
   ##  Llegeix criteris de variables 
-  variables<-read_conductor(taulavariables) %>% dplyr::select(camp,!!criteris) %>% mutate_all(as.character)
+  variables<-read_conductor(taulavariables,...) %>% dplyr::select(camp,!!criteris) %>% mutate_all(as.character)
   criteris_sym<-rlang::sym(criteris)
   variables<-variables %>% dplyr::filter(!is.na(!!criteris_sym) & !!criteris_sym!="")
 
