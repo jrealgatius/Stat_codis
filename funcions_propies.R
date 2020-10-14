@@ -2759,6 +2759,25 @@ resum_events_v2<-function(dades=dades,evento="RD",temps="temps") {
   resum
 }
 
+# Versió millorada, retorna tibble
+resum_events_v3<-function(dt=dadestotal,evento="RD",temps="temps",valorevent="Si") {
+  
+  # evento="EV.CVD"
+  # temps="EV.CVD_temps"
+  # valorevent=1
+  # dt=dades
+  
+  dt %>% summarise(Patients=n(),
+                   P_Years=sum(!!sym(temps)),
+                   Years_free_event_mean=mean(!!sym(temps)),
+                   Years_free_event_median=median(!!sym(temps)),
+                   N_events=sum(!!sym(evento)==valorevent),
+                   Event_rate_1000=((N_events/P_Years)*1000),
+                   IA_100=(N_events/Patients)*100
+  )
+}
+
+
 #  Resum events per grup  ------------------
 ##########              Llanço dades, event, temps , grup i retorno un resum d'events per grups 
 
@@ -2780,6 +2799,8 @@ resum_events_grup=function(d=dadestotal,evento="RD",temps="TEMPS_RD2",grup="sexe
     as_tibble()
   
 }
+
+
 
 
 #  Llistat de Taules compare ------------------
