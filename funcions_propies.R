@@ -325,20 +325,23 @@ llistaNomenada <- function(...) {
 ###
 etiquetar<-function(d=dadestotal,taulavariables="variables_R.xls",camp_descripcio="descripcio",...) {
   
-  # d=iris
-  # taulavariables = etiquetes_iris
+  # d=dades
+  # taulavariables = conductor
   # camp_descripcio="descripcio"
-
-  #  Llegir etiquetes i variables a analitzar ####
-  variables<-read_conductor(taulavariables,...)
-  variables<-variables %>% dplyr::filter(!is.na(camp))
   
-  # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
+  
+  # Symbol
   camp_descripcio<-sym(camp_descripcio)
   
-  variables<-variables %>% dplyr::select(camp,descripcio=!!camp_descripcio) 
+  #  Llegir etiquetes i variables a analitzar ####
+  variables<-read_conductor(taulavariables,...)
+  # variables<-read_conductor(taulavariables)
   
-  # Els que no tenen etiqueta assignar el mateix nom del camp
+  variables<-variables %>% 
+    dplyr::filter(!is.na(camp) & !is.na(!!camp_descripcio)) %>% # elimino els que no tenen etiqueta
+    dplyr::select(camp,descripcio=!!camp_descripcio) # selecciono els camps necessaris (camp i descripcio) i amb etiqueta
+  
+  # Els que no tenen etiqueta assignar el mateix nom del camp (Eliminats previament)
   variables<-variables %>% mutate(descripcio=as.character(descripcio))
   variables<-variables %>% mutate(descripcio=ifelse(descripcio=="0" | is.na(descripcio),camp,descripcio)) 
   
