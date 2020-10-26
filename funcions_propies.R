@@ -446,15 +446,15 @@ etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="varia
 
 # Cambia nom dels elements d'un vector 
 
-etiquetar_vector<-function(vector=vector_variables,camp="camp",taulavariables="variables_R.xls",camp_descripcio="descripcio") {
+etiquetar_vector<-function(vector=vector_variables,camp="camp",taulavariables="variables_R.xls",camp_descripcio="descripcio",...) {
   
-  # vector=vector_vars
+  # vector=v1
   # taulavariables=conductor_variables
   # camp="camp"
-  # camp_descripcio="descripcio"
+  # camp_descripcio="descripcio2"
   
   ####  Llegir etiquetes i variables a analitzar ####
-  variables <- readxl::read_excel(taulavariables) %>% tidyr::as_tibble()
+  variables <- read_conductor(taulavariables,...) 
   camp_sym<-sym(camp)
   variables<-variables %>% dplyr::filter(!is.na(!!camp_sym))
   
@@ -467,8 +467,7 @@ etiquetar_vector<-function(vector=vector_variables,camp="camp",taulavariables="v
   vectorX<-vector %>% tibble(value=.)  # Convertir vector a tibble i filtrar
   variablesX<-variables %>% semi_join(vectorX, by=c("camp"="value")) # Filtrar només variables vector
   
-  vector_nomenat<-stats::setNames(object=variablesX$descripcio,variablesX$camp)
-  vector_nomenat
+  stats::setNames(object=pull(variablesX,!!camp_descripcio_eval),variablesX$camp)
   
 }
 
