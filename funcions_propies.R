@@ -438,7 +438,7 @@ etiquetar_taula<-function(taula=resumtotal,camp="variable",taulavariables="varia
   camp_descripcio_eval<-sym(camp_descripcio)
   # Canviar el format de la taula 
   taula %>% left_join(dplyr::select(variables,c(!!camp_eval,camp_descripcio)),by=quo_name(camp_eval)) %>% 
-    rename(descripcio=!!camp_descripcio) %>% 
+    dplyr::rename(descripcio:=!!camp_descripcio) %>% 
     mutate(!!camp_eval:=descripcio) %>% 
     dplyr::select(-descripcio)
  
