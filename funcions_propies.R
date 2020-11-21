@@ -4740,6 +4740,36 @@ covariate_plot<-function(dt=m.out,vars_remove=NULL, etiquetar=F,...) {
 }
 
 
+covariate_plot_dades<-function(dt=dt_total,var="name",stat="stat",title="Covariate plot \n oGLD vs SGLT-2i group", labx="Standardized mean difference") {
+  
+  # dt=dt_total
+  # var="name"
+  # stat="stat"
+  # title="Covariate plot \n oGLD vs SGLT-2i group"
+  # labx="Standardized mean difference"
+  
+  var=dplyr::sym(var)
+  stat=dplyr::sym(stat)
+  
+  ggplot2::ggplot(aes(y = !!var, x = !!stat, group = Sample), data = dt) + 
+    ggplot2::theme(panel.background = element_rect(fill = "white"),
+                   axis.text.x = element_text(color = "black"),
+                   axis.text.y = element_text(color = "black"),
+                   panel.border = element_rect(fill = NA, color = "black"),
+                   plot.background = element_blank(),
+                   legend.background = element_blank(),
+                   legend.key = element_blank()) + 
+    geom_point(aes(colour=Sample),size=3) +
+    
+    ggplot2::geom_vline(xintercept = c(-0.1,0,0.1) , linetype = 2, color = "gray8")+
+    ggplot2::theme(legend.position = "top")+
+    ggplot2::labs(y = NULL, x = labx, title=title)+
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  
+}
+
+
 
 
 #  FLOW CHART FINAL (diagramaFlowchart)  ---------------------
