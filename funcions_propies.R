@@ -950,7 +950,7 @@ formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
   
   llistataula<-eval(parse(text=pepito))
-  if (a!="") llistataula<-c(llistataula,a)
+  if (a!="") llistataula<-c(a,llistataula)
   
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Si'))")
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Yes'))")
