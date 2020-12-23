@@ -2949,13 +2949,13 @@ afegir_dataindex<-function(dt_historic,bd.dindex="20161231") {
 #                                           3. finestra de temps previ en dies 
 ####################      RETORNA UN data.table amb dades agregades
 
-agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=c(-Inf,Inf),sufix = c(".valor", ".dies")){
+agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=c(-Inf,Inf),sufix = c(".valor", ".dies"),fun="last"){
   
   # dt =VARIABLES
   # bd.dindex =dt_index
   # finestra.dies=c(-365,0)
   # sufix = c(".valor", ".dies")
-  
+  # fun="last"
   #### Afegir + data index (+dtindex) en l'historic de variables
   
   print("Afegint dt.index")
@@ -2979,14 +2979,26 @@ agregar_analitiques<-function(dt=ANALITIQUES,bd.dindex="20161231",finestra.dies=
   
   print ("Seleccionant unic registre per variable-id")
   
-  ##  Selecciono un unic registre i agrego amb valor valid més proper dins de la finestra 
+  ##  Filtro valors sense missings i calculo dies entre ddates
+  paco<- dt %>% filter(val!=-9) %>% dplyr::filter(!is.na(val)) %>%      # elimino missings
+    dplyr::mutate(dies=dtindex -dat)                                    # Calculo els dies fins data index 
   
-  paco<- dt %>% filter(val!=-9) %>% 
-    dplyr::mutate(dies=dtindex -dat) %>%                                    # Calculo els dies fins data index 
-    dplyr::group_by(idp,dtindex,cod) %>%                                    # Agafo fila tal que dies sigui mínim (Valor mes proper)         
-    dplyr::slice(which.min(dies)) %>%                                       # Fila que els dies sigui més propera a data index
-    dplyr::ungroup()  
 
+  ### Generar funcions agregacio
+  if (fun=="last") funcioresum<<-function(x=val,y=dies) dplyr::nth(x,which.min(y))
+  if (fun=="first") funcioresum<<-function(x=val,y=dies) dplyr::nth(x,which.max(y))
+  if (fun=="close") funcioresum<<-function(x=val,y=dies) dplyr::nth(x,which.min(abs(y)))
+  if (fun=="mean") funcioresum<<-function(x=val,y=dies) mean(x,na.rm = T)
+  if (fun=="median") funcioresum<<-function(x=val,y=dies) median(x,na.rm = T)
+  if (fun=="sd") funcioresum<<-function(x=val,y=dies) sd(x,na.rm = T)
+
+  ### Agregacio per idp
+  paco<-paco %>% 
+    dplyr::group_by(idp,dtindex,cod) %>%                                    # Agrupo 
+    mutate(val=funcioresum(val,dies)) %>%  #                                # Resum valor
+    dplyr::slice(which.min(dies)) %>%                                       # Unic valor, dies tals que es menor
+    dplyr::ungroup()  
+  
   print ("Reshaping")
   
   # RESHAPE valors d'Analitiques 
