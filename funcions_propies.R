@@ -4383,7 +4383,8 @@ forest.plot.HR<-function(dadesmodel,label="Categoria",mean="estimate",lower="Lin
   ymaxim=taula_betas %>% count() %>% as.numeric()
   
   fp <- ggplot(data=taula_betas,aes(x=id, y=valor, ymin=Linf, ymax=Lsup)) +
-    geom_pointrange(size=0.6) + 
+    # geom_pointrange(size=0.6) + 
+    geom_pointrange(size=0.2) + 
     geom_hline(yintercept=intercept, lty=1,colour="grey") +  # add a dotted line at x=1 after flip
     coord_flip() +  # flip coordinates (puts labels on y axis)
     scale_x_continuous(breaks=taula_betas %>% pull(id),labels=labels_scaleX)  +
