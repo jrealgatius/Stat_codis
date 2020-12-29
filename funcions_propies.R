@@ -4322,6 +4322,91 @@ forest.plot.v3<-function(dadesmodel=dt_estimacions,label="Categoria",mean="estim
 }
 
 
+# Forest plot estratificar, label de categoria, mean , nivell per fer un salt, i un factor per posar llegenda
+
+forest.plot.HR<-function(dadesmodel,label="Categoria",mean="estimate",lower="Linf",upper="Lsup",label_X="OR (95% CI)",
+                         intercept=1,
+                         nivell="outcome", factor1="type",color=F, label_Xvertical="Cardiovascular event",nolabels=TRUE,
+                         title = "Forest plot of hazard hatios and confidence interval (95%CI)",
+                         label_Favors="Favors SGLT-2        Favors oGLD-2") {
+  
+  # dadesmodel=dt_fig
+  # label="label"
+  # mean="HR"
+  # lower="IC951"
+  # upper="IC952"
+  # label_X="Hazard ratio (95% CI)"
+  # intercept=1
+  # nivell="outcome"
+  # factor1="grups"
+  # label_Xvertical = "Subgroups"
+  # color=F
+  # nolabels=TRUE
+  
+  # Generar data set 
+  dadesmodel <- dadesmodel %>% select(valor=!!mean,Linf=!!lower,Lsup=!!upper,nivell=!!nivell, factor1=!!factor1)
+  
+  ## Preparar taula (Genero etiqueta)
+  taula_betas<-dadesmodel %>% mutate(etiqueta=paste0("   ",factor1),
+                                     Group = paste0(factor1))
+  
+  # Afegir fila com un punt nivell per outcome i genero label de group
+  taula_betas<-taula_betas %>% split(.$nivell) %>% 
+    purrr::map_dfr(~add_row(.x,.before = 0),.id = "outcome" ) %>% 
+    dplyr::mutate (etiqueta2=if_else(is.na(etiqueta),outcome,"")) %>% 
+    dplyr::mutate (etiqueta=if_else(is.na(etiqueta),outcome,etiqueta))
+  
+  # AFegir etiqueta 3 mes centrada
+  taula_betas<-taula_betas %>% mutate(etiqueta3=lag(etiqueta2),
+                                      etiqueta3=if_else(is.na(etiqueta3),"",etiqueta3))
+  
+  # Reordenar outcomes segons origen de taula inicial
+  dt_ordre<-dadesmodel %>% distinct(outcome=nivell) %>% mutate(seq=seq(1:n()))
+  taula_betas<-taula_betas %>% left_join(dt_ordre,by="outcome") %>% arrange(seq)
+  
+  # Generar id 
+  taula_betas<-taula_betas %>% mutate(id=seq(n())) %>% mutate(id=n()-id+1)
+  
+  # REomplir missings en factor1 i factor2
+  taula_betas<-taula_betas %>% fill(c(factor1,Group),.direction="updown")
+  
+  # Relevel mateix ordre tal com surt taula   
+  ordre_levels<-taula_betas %>% pull(Group) %>% unique()
+  taula_betas$Group<-factor(taula_betas$Group, levels = ordre_levels)
+  
+  # per defecte agafo etiqueta 3 (Si no agafo etiqueta buida)
+  if (nolabels) labels_scaleX=taula_betas %>% pull(etiqueta3) else labels_scaleX=taula_betas %>% pull(etiqueta)  
+  
+  #limits màxims d'eixos
+  xmax=max(taula_betas$Lsup,na.rm = T) %>% max(2) 
+  xmin=min(taula_betas$Linf,na.rm = T) %>% min(0.4)
+  ymaxim=taula_betas %>% count() %>% as.numeric()
+  
+  fp <- ggplot(data=taula_betas,aes(x=id, y=valor, ymin=Linf, ymax=Lsup)) +
+    geom_pointrange(size=0.6) + 
+    geom_hline(yintercept=intercept, lty=1,colour="grey") +  # add a dotted line at x=1 after flip
+    coord_flip() +  # flip coordinates (puts labels on y axis)
+    scale_x_continuous(breaks=taula_betas %>% pull(id),labels=labels_scaleX)  +
+    ylim(xmin,xmax)
+  
+  fp<-fp + theme_minimal(base_size = 12) + theme(axis.text.y = element_text(hjust = 0,vjust=0,size=11)) +
+    labs(title = title, x=label_Xvertical,y=label_X, col="Method \n") +
+    theme(legend.position="top") +
+    annotate("text", x=ymaxim+1,y=1,label=label_Favors, colour = "black",size=2.5)
+  
+  # caption = "SGLT-2: sodium-glucose co-transporter-2 inhibitors | oGLD-2 \n created by Jordi Real & Rai Puig ")
+  
+  if (color) {fp<-fp + geom_point(aes(color=Group),size=3)} 
+  
+  # Add banda d'error
+  # fp<-fp + geom_hline(yintercept = c(intercept+0.1,intercept-0.1),linetype=2)
+  
+  fp 
+  
+  # plotly::ggplotly(fp) 
+  
+  
+}
 
 
 #  DATA RANDOM ENTRE DUES DATES (dataini i datafi) ---------------
