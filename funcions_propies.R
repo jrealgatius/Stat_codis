@@ -1090,6 +1090,12 @@ formula.LOGIT=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavari
 
 formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavariables='variables.xls',dt=NA,...) {
 
+  # x="ajuste4"
+  # y="Prediabetes"
+  # eliminar="Prediabetes"
+  # a="s(Age)"
+  # taulavariables=conductor_variables
+
   # variables <- data.frame(readxl::read_excel(taulavariables))
   variables <- read_conductor(taulavariables,...) %>% data.frame()
   
@@ -1111,7 +1117,7 @@ formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavaria
   pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%eliminar]",sep="")
   
   llistataula<-eval(parse(text=pepito))
-  if (a!="") llistataula<-c(a,llistataula,a)
+  if (a!="") llistataula<-c(a,llistataula)
   
   y<-paste(y, paste(llistataula, collapse=" + "), sep=" ~ ")
   
