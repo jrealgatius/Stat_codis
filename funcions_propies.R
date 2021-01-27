@@ -2853,12 +2853,12 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
   pvalors <- compareGroups::getResults(objecte_compare, p)
 
   # 2. Taula de p vals 
-  pvals<-data.table(pvalors)
+  pvals<-data.table::data.table(pvalors)
   
   # 4. Ajusta p- valors 
   # pvals$Adjpvalor<-stats::p.adjust(pvalors, method = metodo)
 
-  pvals<-pvals[,1:ncol(pvals)] %>% map_df(stats::p.adjust,method = metodo)
+  pvals<-pvals[,1:ncol(pvals)] %>% purrr::map_df(stats::p.adjust,method = metodo)
 
   # # 5. Punt de tall
   # pvals<-pvals %>% mutate_all(sigBH=ifelse(Adjpvalor<0.05,"Sig","NS"))
