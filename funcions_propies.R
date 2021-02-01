@@ -2310,7 +2310,7 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
 # Beta, SE, p-value, HR, Li95%CI, Ls95%CI
 
 
-extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA){
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si"){
   
   
   # event="EV_CardV"
@@ -2333,9 +2333,9 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables))
   
   # Generar variable status (tipo de censuras) ----
-  dt<-dt %>% mutate(status=case_when(event=="Si" ~"event",
-                                     event=="No" & exitus=="Si"~"Mortality",
-                                     event=="No" & exitus=="No"~"Censored")) 
+  dt<-dt %>% mutate(status=case_when(event==codievent ~"event",
+                                     event!=codievent & exitus==codievent~"Mortality",
+                                     event!=codievent & exitus!=codievent~"Censored")) 
   
   # Generar matriu de covariables 
   # Cambiar categoria de referencia de grup a No
@@ -2366,6 +2366,43 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   
 }
 
+extreure_model_cmprisk<-function(dt=dades,event="amputacio_cat",temps="t_lliure_amputa",competitiu="Ha_muerto",codievent="Yes",covariables=c("Sexo","Edad","Tabaquismo")) {
+  
+  # dt=dades
+  # event="amputacio_cat"
+  # temps="t_lliure_amputa"
+  # competitiu="Ha_muerto"
+  # codievent="Yes"
+  # covariables=c("Sexo","Edad","Tabaquismo")
+  
+  event<-sym(event)
+  temps<-sym(temps)
+  eventcompetitiu<-sym(competitiu)
+  
+  # Extreure variables i formatar
+  dt <- dt %>% select(temps=!!temps,event=!!event,exitus=!!competitiu,all_of(covariables)) %>% na.omit()
+  
+  dt<-dt %>% mutate(event=as.numeric(event==codievent),
+                    exitus=as.numeric(exitus==codievent))
+  
+  codi_event=as.numeric(codievent==codievent)
+  codi_Noevent=as.numeric(codievent!=codievent)
+  
+  # Generar variable status (tipo de censuras) ----
+  dt<-dt %>% mutate(status=case_when(event==codi_event ~"Event",
+                                     event==codi_Noevent & exitus==codi_event~"Mortality",
+                                     event==codi_Noevent & exitus==codi_Noevent~"Censored")) 
+  # Converir matriu de covariables
+  cov1 <- stats::model.matrix(formula_vector(covariables,""),data = dt)[, -1]
+  
+  # Ajust de model
+  model<-cmprsk::crr(ftime=dt$temps,
+                     fstatus=dt$status,
+                     cov1=cov1 , #  matrix (nobs x ncovs) of fixed covariates
+                     failcode = "Event", # code of fstatus that denotes the failure type of interest
+                     cencode = "Censored") # code of fstatus that denotes censored observations
+  model
+}
 
 
 # CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades  --------------
