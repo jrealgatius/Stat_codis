@@ -2444,7 +2444,7 @@ extreure_cuminc_cmprisk<-function(dt=dades,event="amputacio_cat",temps="t_lliure
 
 extreure_coef_cmprisk<-function(model_cmrisk){
   
-  summary(model_RC)$coef %>% 
+  summary(model_cmrisk)$coef %>% 
     as.data.frame() %>% 
     transmute(Variable=row.names(.),
               HR=`exp(coef)`,
