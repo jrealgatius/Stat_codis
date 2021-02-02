@@ -2377,7 +2377,7 @@ extreure_model_cmprisk<-function(dt=dades,event="amputacio_cat",temps="t_lliure_
   
   event<-sym(event)
   temps<-sym(temps)
-  eventcompetitiu<-sym(competitiu)
+  competitiu<-sym(competitiu)
   
   # Extreure variables i formatar
   dt <- dt %>% select(temps=!!temps,event=!!event,exitus=!!competitiu,all_of(covariables)) %>% na.omit()
@@ -2404,6 +2404,54 @@ extreure_model_cmprisk<-function(dt=dades,event="amputacio_cat",temps="t_lliure_
   model
 }
 
+## Extreure cuminc competitive risk
+
+extreure_cuminc_cmprisk<-function(dt=dades,event="amputacio_cat",temps="t_lliure_amputa",competitiu="Ha_muerto",codievent="Yes",group=NULL,strata=NULL) {
+  
+  # dt=dades
+  # event="amputacio_cat"
+  # temps="t_lliure_amputa"
+  # competitiu="Ha_muerto"
+  # codievent="Yes"
+  # group=NULL
+  # strata=NULL
+  
+  event<-sym(event)
+  temps<-sym(temps)
+  competitiu<-sym(competitiu)
+  
+  # Extreure variables i formatar
+  dt <- dt %>% select(temps=!!temps,event=!!event,exitus=!!competitiu,group,strata) %>% na.omit()
+  
+  dt<-dt %>% mutate(event=as.numeric(event==codievent),
+                    exitus=as.numeric(exitus==codievent))
+  
+  codi_event=as.numeric(codievent==codievent)
+  codi_Noevent=as.numeric(codievent!=codievent)
+  
+  # Generar variable status (tipo de censuras) ----
+  dt<-dt %>% mutate(status=case_when(event==codi_event ~"Event",
+                                     event==codi_Noevent & exitus==codi_event~"Mortality",
+                                     event==codi_Noevent & exitus==codi_Noevent~"Censored")) 
+  # cuminc 
+  cmprsk::cuminc(ftime=dt$temps,
+                 fstatus=dt$status,
+                 cencode = "Censored") # code of fstatus that denotes censored observations
+  
+}
+
+# D'un model cmprisk extrec coeficients
+
+extreure_coef_cmprisk<-function(model_cmrisk){
+  
+  summary(model_RC)$coef %>% 
+    as.data.frame() %>% 
+    transmute(Variable=row.names(.),
+              HR=`exp(coef)`,
+              IC95_Linf=exp(coef-1.97*`se(coef)`),                                                            
+              IC95_Lsup=exp(coef+1.97*`se(coef)`),
+              `p-value`) %>% as_tibble()
+ }
 
 # CORRELACIONS, P VALORS ENTRE var1 i llista de quantis de dades  --------------
 extreure_cor=function(var1="CD36",var="quantis",d="dades",taulavariables="VARIABLES.xls",...) {
