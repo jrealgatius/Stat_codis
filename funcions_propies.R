@@ -6065,6 +6065,48 @@ recodificar2<-function(dt=dt_plana,
 }  
 
 
+# extreure_pvalor_Signes_binomial(dades,vars_pre,vars_post)
+
+## Llista 2 parells de llistes de variables tipus pre-post i retorna un únic p-valor test del signes (canvi) de la binomial
+## S'espera que tots els canvis van cap al mateix sentit (o tots baixen o tots pujen)
+
+extreure_Pglobal_SigTest<-function(dt=dades,vars_pre=vars_pre,vars_post=vars_post) {
+  # vars_pre<-c("VLDL_C","IDL_C")
+  # vars_post<-c("VLDL_C_FU","IDL_C_FU")
+  # dt<-dades 
+  
+  # vars_pre<-vars_pre
+  # vars_post<-vars_post
+  # dt<-dades 
+  
+  dt<-dt %>% mutate(id=1:n()) %>% 
+    select(id, vars_pre,vars_post) %>% 
+    rename_at(vars_pre,~paste0("var",c(1:length(vars_post)),"_pre")) %>% 
+    rename_at(vars_post,~paste0("var",c(1:length(vars_post)),"_pos")) %>% 
+    mutate_all(as.numeric)
+  
+  longer<-dt %>% 
+    tidyr::pivot_longer(cols=-1, names_pattern = "(.*)(....)$", names_to = c("var", "temps")) %>% 
+    mutate(temps=if_else(temps=="_pre","0","1")) %>% 
+    tidyr::pivot_wider(id_cols = c(id,temps), names_from = var, values_from = value, names_repair = "check_unique") %>% 
+    na.omit() 
+  
+  vars<-paste0("var",c(1:length(vars_post)))
+  
+  dt_fi<-longer %>% group_by(id) %>% summarise_at(vars,list(dif=~.-lag(.))) %>% 
+    slice(2) %>% ungroup() %>% 
+    tidyr::pivot_longer(cols=-1) %>% 
+    filter (value!=0) # Elimino els empats
+  
+  x<-sum(as.numeric(dt_fi$value>0))
+  n<-length(dt_fi$value)
+  
+  test_bin<-binom.test(x,n,p=0.5)
+  if (test_bin$p.value<0.001) result="<0.001" else result=test_bin$p.value
+  
+  return(result)
+  
+}
 
 
 
