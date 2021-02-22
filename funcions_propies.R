@@ -2963,6 +2963,22 @@ Pvalors_ajustats_compare<-function(objecte_compare=T1.1.2, metodo="BH",p="p.over
 
 }
 
+## Actualitzar p-valors d'un objecte CompareGroups
+Pvalors_ajustats_Update_Compare<-function(objecte_compare=res,p="p.overall",metodo="BH") {
+  # 1. Extrect els p-valors 
+  pvalors <- compareGroups::getResults(objecte_compare, p)
+  
+  # 2. Recalculo p-valors segons metode
+  pvalors<-stats::p.adjust(pvalors, method = metodo) 
+  
+  # 3. Actualitzo Objecte compare
+  vars_names<-names(objecte_compare)
+  for(i in unique(vars_names)){                                # achieved here
+    objecte_compare[[i]]["p.overall"]$p.overall <- pvalors[i] }
+  # 4. Resultat
+  objecte_compare
+}
+
 Pvalors_ajustats_taula<-function(objecte_taula=OR.ajust, p.valors='p valor', metodo="BH") {
   
   # objecte_taula=taulacoef
