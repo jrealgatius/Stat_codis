@@ -2310,18 +2310,21 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
 # Beta, SE, p-value, HR, Li95%CI, Ls95%CI
 
 
-extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si"){
-  
-  
-  # event="EV_CardV"
-  # temps="temps_fins_EVCardV"
-  # grup="diabetes"
-  # dt=dades
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si",refcat=NA){
+ 
+  # dt=dades 
+  # event="event_tbc"
+  # temps="temps_tbc"
   # eventcompetitiu="exitus"
-  # covariables=c("sexe","edat")
+  # codievent="1"
+  # grup="grup"
+  # strata=NULL
+  # refcat="No"
+  # # covariables=c("sexe","edat")
   # covariables=NA
-  # covariables=variablesajust
-  
+  # # covariables=variablesajust
+  # 
+
   event<-sym(event)
   temps<-sym(temps)
   grup<-sym(grup)
@@ -2339,8 +2342,8 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   
   # Generar matriu de covariables 
   # Cambiar categoria de referencia de grup a No
-  dt$grup <- relevel(dt$grup, "No")
-  
+  if (!is.na(refcat)) dt[[grup]] = relevel(dt[[grup]], refcat)
+
   # Afegir variable grup a covariables
   covariables<-c("grup",covariables)
   cov1 <- stats::model.matrix(formula_vector(covariables,""),data = dt)[, -1]
