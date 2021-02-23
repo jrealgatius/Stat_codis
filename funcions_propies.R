@@ -2893,7 +2893,22 @@ resum_events_grup=function(d=dadestotal,evento="RD",temps="TEMPS_RD2",grup="sexe
   
 }
 
+## Retorna taxa d'incidencia + corresponent IC95 
 
+Resum_taxa_incidencia<-function(dt=dades,evento="event_tbc",temps="anys_lliure_tbc",valorevent="1",...) {
+  
+  # dt=dades
+  # evento="event_tbc"
+  # temps="anys_lliure_tbc"
+  # valorevent="1"
+  
+  Patients=length(dt[[evento]])
+  PYears=sum(dt[[temps]])
+  N.Events=sum(dt[[evento]]==valorevent)
+  
+  pp<-epiR::epi.conf(as.matrix(cbind(N.Events,PYears)),ctype = "inc.rate",method = "exact",N = 1000, design = 1,...)*100000
+  cbind(Patients,PYears,N.Events,rate=pp$est,IC95_Linf=pp$lower,IC95_Lsup=pp$upper)%>% as_tibble()
+}
 
 
 #  Llistat de Taules compare ------------------
