@@ -2309,7 +2309,7 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
 # Donat un event, temps de seguiment, grup, eventcompetitiu retorna tibble:
 # Beta, SE, p-value, HR, Li95%CI, Ls95%CI
 # Afegit cluster
-extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si",refcat=NA,cluster=NA){
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si",refcat=NA,cluster=""){
  
   # dt=dades
   # event="event_tbc"
@@ -2329,11 +2329,11 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   grup<-sym(grup)
   eventcompetitiu<-sym(eventcompetitiu)
   # Selecciono variables necessaries ()
-  if (is.na(cluster)) {
+  if (cluster=="") {
       if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event) 
       if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables)) }
   
-  if (!is.na(cluster)) {
+  if (cluster!="") {
       if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,cluster=!!cluster) 
       if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables),cluster=!!cluster) }
  
@@ -2352,7 +2352,7 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   cov1 <- stats::model.matrix(formula_vector(covariables,""),data = dt)[, -1]
   
   # Codificar riscos competitius / competitius per clusters
-  if (is.na(cluster)) 
+  if (cluster=="") 
     model<-cmprsk::crr(ftime=dt$temps,
                      fstatus=dt$status,
                      cov1=cov1 , #  matrix (nobs x ncovs) of fixed covariates
