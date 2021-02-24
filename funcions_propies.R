@@ -1125,10 +1125,10 @@ formula.text=function(x="taula1",y="resposta",eliminar=c("IDP"), a="",taulavaria
 
 #  formula_vector(vector,y, vector caracter a elimina) ##########
 
-formula_vector<-function(vector=c("sex","age"),y="y",logit=F,eliminar=NA){
+formula_vector<-function(vector=c("sex","age","age"),y="y",logit=F,eliminar=NA){
   
-  vector<-vector [!vector %in% eliminar]
-  
+  vector<-vector [!vector %in% eliminar] %>% unique()
+
   if (!logit) {formula=as.formula(paste(y, paste(vector, collapse=" + "), sep=" ~ "))}
   if (logit) {formula=paste0("as.factor(",y,")~ ", paste(vector, collapse=" + ")) %>% as.formula()}           
   
@@ -2308,33 +2308,35 @@ HR.COX.CRU=function(x="lipos",event="EVENT_MCV",t="temps_exitus",e="",d=dadesDF,
 # Funció Riscos competitius Fine & Grey 
 # Donat un event, temps de seguiment, grup, eventcompetitiu retorna tibble:
 # Beta, SE, p-value, HR, Li95%CI, Ls95%CI
-
-
-extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si",refcat=NA){
+# Afegit cluster
+extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",eventcompetitiu="exitus",dt=dades, covariables=NA,codievent="Si",refcat=NA,cluster=NA){
  
-  # dt=dades 
+  # dt=dades
   # event="event_tbc"
   # temps="temps_tbc"
   # eventcompetitiu="exitus"
   # codievent="1"
   # grup="grup"
-  # strata=NULL
-  # refcat="No"
-  # # covariables=c("sexe","edat")
+  # cluster="case.id"
+  # # strata=NULL
+  # refcat="Control"
+  # # # covariables=c("sexe","edat")
   # covariables=NA
-  # # covariables=variablesajust
+  # # # covariables=variablesajust
   # 
-
   event<-sym(event)
   temps<-sym(temps)
   grup<-sym(grup)
   eventcompetitiu<-sym(eventcompetitiu)
-  
   # Selecciono variables necessaries ()
+  if (is.na(cluster)) {
+      if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event) 
+      if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables)) }
   
-  if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event) 
-  if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables))
-  
+  if (!is.na(cluster)) {
+      if (any(is.na(covariables)))   dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,cluster=!!cluster) 
+      if (!any(is.na(covariables)))  dt<-dt %>% select(grup=!!grup,exitus=!!eventcompetitiu,temps=!!temps,event=!!event,all_of(covariables),cluster=!!cluster) }
+ 
   # Generar variable status (tipo de censuras) ----
   dt<-dt %>% mutate(status=case_when(event==codievent ~"event",
                                      event!=codievent & exitus==codievent~"Mortality",
@@ -2342,19 +2344,22 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
   
   # Generar matriu de covariables 
   # Cambiar categoria de referencia de grup a No
+  dt[[grup]]<-as.factor(dt[[grup]])
   if (!is.na(refcat)) dt[[grup]] = relevel(dt[[grup]], refcat)
 
   # Afegir variable grup a covariables
   covariables<-c("grup",covariables)
   cov1 <- stats::model.matrix(formula_vector(covariables,""),data = dt)[, -1]
   
-  # Codificar riscos competitius 
-  model<-cmprsk::crr(ftime=dt$temps,
+  # Codificar riscos competitius / competitius per clusters
+  if (is.na(cluster)) 
+    model<-cmprsk::crr(ftime=dt$temps,
                      fstatus=dt$status,
                      cov1=cov1 , #  matrix (nobs x ncovs) of fixed covariates
                      failcode = "event", # code of fstatus that denotes the failure type of interest
-                     cencode = "Censored") # code of fstatus that denotes censored observations
-  
+                     cencode = "Censored") else # code of fstatus that denotes censored observations 
+    model<-crrSC::crrc(ftime=dt$temps,fstatus=dt$status,cov1=cov1,cluster=dt$cluster, failcode = "event", cencode = "Censored")
+
   tab <- summary(model)$coef[1,]
   x <- round(cbind("beta" = tab[1], 
                    "SE" = tab[3], 
@@ -2364,6 +2369,7 @@ extreure_HRFG=function(event="exitusCV",temps="temps_seguiment",grup="diabetis",
                    "LS" = exp(tab[1] + qnorm(1 - (1-0.95)/2)*tab[3])), 4)
   colnames(x) <- c("Beta", "SE", "p-value", "HR", "Li95%CI", "Ls95%CI")
   rownames(x) <- rownames(tab)
+  
   
   as_tibble(x)
   
