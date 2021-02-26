@@ -964,19 +964,22 @@ missings_to_level<-function(dades,variable="popes") {
 
 ###       incorpora variables a evaluar a=Llista de variables a avaluar     ###
 
-formulaCOX=function(x="v.ajust",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls",codievent='1') {
+formulaCOX=function(x="",event="event",temps="temps",elimina="",cluster="",a="",taulavariables="variables.xls",codievent='1') {
+  # taulavariables<-conductor_variables
+  # x=""
+  # a="grup"
   
-  variables <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble())
+  # variables <- data.frame(readxl::read_excel(taulavariables) %>% tidyr::as_tibble())
+  variables <- read_conductor(taulavariables)
   # variables[is.na(variables)]<- 0
   x_sym<-rlang::sym(x)
-  variables<-variables %>% dplyr::filter(!is.na(!!x_sym))
-  
-  variables<-variables %>% arrange(!!x_sym)
-  
-  pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
-  
-  llistataula<-eval(parse(text=pepito))
-  if (a!="") llistataula<-c(a,llistataula)
+  if (x!="") {variables<-variables %>% dplyr::filter(!is.na(!!x_sym)) %>% dplyr::arrange(!!x_sym)
+              pepito<-paste("as.vector(variables[variables$",x,">0,]$camp)[!as.vector(variables[variables$",x,">0,]$camp)%in%c('idp')]",sep="")
+              llistataula<-eval(parse(text=pepito))
+              if (a!="") llistataula<-c(a,llistataula)
+              
+  } else {if (a!="") llistataula<-a}
+    
   
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Si'))")
   # resposta<-paste("Surv(",temps,", as.integer(",event,"=='Yes'))")
@@ -2247,9 +2250,9 @@ MAP_valor_ggplot<-function(
 
 #  HR.COX  --------------------
 ####      funció que retorna MATRIU-->Ngran, Events, HR, IC951, IC952, p 
-HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls",c="",...) { 
+HR.COX=function(x="",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dadesDF,taulavariables="variables.xls",c="",...) { 
   
-  # x="v.ajust"
+  # x=""
   # event = "event_tbc"
   # t="temps_tbc"
   # d=dades
@@ -2283,6 +2286,7 @@ HR.COX=function(x="v.ajust",event="EV.INSUF_CARD",t="tmp_insuf_card",e="",d=dade
             p=NA)}
     
   )
+  if  (is.null(rownames(result))) rownames(result)<-"grup"
   result
 }
 
