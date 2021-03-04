@@ -384,7 +384,7 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   num_vars<-length(noms_variables)
   
   # Elimina espais en blanc de les variables factor / character (treu nivells) nomes variables nomenades
-  dt<-dt %>% mutate_at(noms_variables,~ifelse(is.factor(.),trimws,.))
+  # dt<-dt %>% mutate_at(noms_variables,~ifelse(is.factor(.),trimws(.),.))
 
   dt_original<-dt # Faig copia original
   
