@@ -364,14 +364,14 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   
   # dt=dades
   # variables_factors=conductor_variables
-  # fulla="nacionalitats"
-  # camp_etiqueta="etiqueta2"
-  # missings=T
-  # new_vars=T
+  # fulla="value_label"
+  # camp_etiqueta="etiqueta"
+  # missings=F
+  # new_vars=F
   # sufix=".2"
 
   # Llegir conductor#
-  variables_factors<-readxl::read_excel(variables_factors,sheet=fulla) %>% tidyr::as_tibble()
+  variables_factors<-read_conductor(variables_factors,sheet=fulla)
 
   # Split
   camp_etiqueta<-sym(camp_etiqueta)
@@ -383,10 +383,9 @@ etiquetar_valors<-function(dt=dades,variables_factors=conductor_variables,fulla=
   noms_variables<-names(pepe)
   num_vars<-length(noms_variables)
   
-  # Elimina espais en blanc de totes les variables factor / character (treu nivells) tot el data_frame
-  dt[sapply(dt,is.factor)] <- lapply(dt[sapply(dt,is.factor)], trimws)
-  dt[sapply(dt,is.character)] <- lapply(dt[sapply(dt,is.character)], trimws)
-  
+  # Elimina espais en blanc de les variables factor / character (treu nivells) nomes variables nomenades
+  dt<-dt %>% mutate_at(noms_variables,~ifelse(is.factor(.),trimws,.))
+
   dt_original<-dt # Faig copia original
   
   for (i in 1:num_vars) {
