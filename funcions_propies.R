@@ -3392,15 +3392,18 @@ agregar_problemes_agr<-function(dt=PROBLEMES,agregador="ECV",camp_agregador="AGR
 #  Arguments: Historic de PRESCRIPCIONS, data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0)  
 #  Requereix:(idp,cod,dat,dbaixa(yyyymmdd)) i Cataleg d'agrupadors amb cod, agr
 # 
-agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregadors=CATALEG,prefix="FP.",finestra.dies=c(0,0),camp_agregador="agr",agregar_data=F, acumular=NULL){
+agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregadors=CATALEG,prefix="FP.",finestra.dies=c(0,0),camp_agregador="agr",agregar_data=F, acumular=NULL,cataleg_mana=F){
 
-  # dt=dt_prescrits_dosis
-  # bd.dindex=dt_dindex
-  # dt.agregadors=conductor_idpp4
+  # dt=dt_farmacs_prescrits
+  # dt.agregadors=dt_cataleg_FX
   # prefix="FP."
-  # finestra.dies=c(0,90)
+  # bd.dindex=20191231
+  # finestra.dies=c(-Inf,0)
   # camp_agregador="agr"
-  # agregar_data=F
+  # agregar_data=T
+  # cataleg_mana=T
+  # acumular=NULL
+
   # acumular="dosis_dia"
   # acumular=NULL
 
@@ -3477,6 +3480,19 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
       dplyr::ungroup() %>% 
       dplyr::rename(FX=dat)}
  
+  # Previ aplanamenta Si vull agregar agregadors missings de cataleg he d'afegir-los abans d'aplanar
+  
+  if (cataleg_mana) {
+    # Selecciono agregadors en cataleg sense codi en dt
+    # tots els codis que tenen algun agregador en dt i els que no
+    dt_temp2<-dplyr::select(dt,cod) %>% distinct(cod) %>% left_join(dplyr::select(dt.agregadors,c(cod,agr)),by="cod")
+    pp<-dplyr::select(dt.agregadors,agr) %>% distinct() %>% anti_join(dt_temp2 %>% distinct(agr),by="agr")
+    porca<-prescripcions_agr %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() %>% mutate(FX=NA)
+    # Afegeixo en dt.temp els nous agregadors buits i fusiono amb dt.temp
+    prescripcions_agr<-prescripcions_agr %>% bind_rows(porca)
+  }
+  #
+  
   # Aplanamenta
   prescripcions_agr<-prescripcions_agr %>% tidyr::spread(agr,FX,sep=".")
       
@@ -3491,8 +3507,16 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
 #  Retorna tibble (data.table) amb la suma d'envasos o data primera dispensació dins d'una finestra de temps per idp-dataindex      
 #  Arguments: historic de facturacions (PRESCRIPCIONS) , data index constant o data.table, agregadors de codis (tibble:cod agr), finestra de temps en dies (-365,0) 
 #  Requereix dt=(idp,cod,env,dat(yyyymm)) i Cataleg d'agrupadors amb cod, agr
-agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F,acumular=NULL){
+agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregadors=CATALEG,bd.dindex="20161231",prefix="FD.",camp_agregador="agr", agregar_data=F,acumular=NULL,cataleg_mana=F){
 
+  # dt=dt_facturacio
+  # bd.dindex="20191231"
+  # finestra.dies=c(-90,0)
+  # dt.agregadors=dt_cataleg_FX
+  # prefix="FF."
+  # camp_agregador="agr"
+  # agregar_data=T
+  # cataleg_mana=T
   
   # dt=dt_facturats_dosis
   # finestra.dies = c(0,90)
@@ -3598,6 +3622,18 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
     
     }
   
+  # Previ aplanamenta Si vull agregar agregadors missings de cataleg he d'afegir-los abans d'aplanar
+  
+  if (cataleg_mana) {
+    # Selecciono agregadors en cataleg sense codi en dt
+    # tots els codis que tenen algun agregador en dt i els que no
+    dt_temp2<-dplyr::select(dt,cod) %>% distinct(cod) %>% left_join(dplyr::select(dt.agregadors,c(cod,agr)),by="cod")
+    pp<-dplyr::select(dt.agregadors,agr) %>% distinct() %>% anti_join(dt_temp2 %>% distinct(agr),by="agr")
+    porca<-dt_agregada %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() %>% mutate(FX=NA)
+    # Afegeixo en dt.temp els nous agregadors buits i fusiono amb dt.temp
+    dt_agregada<-dt_agregada %>% bind_rows(porca)
+    }
+  ##################
   
   # Aplanamenta
   print("Aplanamenta")
