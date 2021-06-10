@@ -3284,7 +3284,7 @@ agregar_problemes<-function(dt=PROBLEMES,bd.dindex="20161231",dt.agregadors=CATA
     # tots els codis que tenen algun agregador en dt i els que no
     dt_temp2<-dplyr::select(dt,cod) %>% distinct(cod) %>% left_join(dplyr::select(dt.agregadors,c(cod,agr)),by="cod")
     pp<-dplyr::select(dt.agregadors,agr) %>% distinct() %>% anti_join(dt_temp2 %>% distinct(agr),by="agr")
-    porca<-dt.temp %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() %>% mutate(dat=NA)
+    porca<-dt.temp %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() 
     # Afegeixo en dt.temp els nous agregadors buits i fusiono amb dt.temp
     dt.temp<-dt.temp %>% bind_rows(porca)
     }
@@ -3487,7 +3487,7 @@ agregar_prescripcions<-function(dt=PRESCRIPCIONS,bd.dindex=20161231,dt.agregador
     # tots els codis que tenen algun agregador en dt i els que no
     dt_temp2<-dplyr::select(dt,cod) %>% distinct(cod) %>% left_join(dplyr::select(dt.agregadors,c(cod,agr)),by="cod")
     pp<-dplyr::select(dt.agregadors,agr) %>% distinct() %>% anti_join(dt_temp2 %>% distinct(agr),by="agr")
-    porca<-prescripcions_agr %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() %>% mutate(FX=NA)
+    porca<-prescripcions_agr %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() 
     # Afegeixo en dt.temp els nous agregadors buits i fusiono amb dt.temp
     prescripcions_agr<-prescripcions_agr %>% bind_rows(porca)
   }
@@ -3629,7 +3629,7 @@ agregar_facturacio<-function(dt=PRESCRIPCIONS,finestra.dies=c(-365,0),dt.agregad
     # tots els codis que tenen algun agregador en dt i els que no
     dt_temp2<-dplyr::select(dt,cod) %>% distinct(cod) %>% left_join(dplyr::select(dt.agregadors,c(cod,agr)),by="cod")
     pp<-dplyr::select(dt.agregadors,agr) %>% distinct() %>% anti_join(dt_temp2 %>% distinct(agr),by="agr")
-    porca<-dt_agregada %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() %>% mutate(FX=NA)
+    porca<-dt_agregada %>% distinct(idp,dtindex) %>% merge(pp) %>% as_tibble() 
     # Afegeixo en dt.temp els nous agregadors buits i fusiono amb dt.temp
     dt_agregada<-dt_agregada %>% bind_rows(porca)
     }
