@@ -6270,17 +6270,24 @@ extreure_Pglobal_SigTest<-function(dt=dades,vars_pre=vars_pre,vars_post=vars_pos
 
 ## Entra data frame i cambia nom de variable
 
-canvi_noms_variables<-function(dt=dt_temp,variable="ajust2", nou_nom="descripcio",conductor=conductor_variables) {
+canvi_noms_variables<-function(dt=dt_temp,variable="ajust2", nou_nom="descripcio",conductor=conductor_variables,...) {
+  
+  # dt=dades_TAI
+  # variable="camp"
+  # nou_nom = "camp2"
+  # conductor = conductor_variables
+  # sheet="rename_SG"
+  
   # dt=dt_temp
   # variable="ajust2"
   # conductor=conductor_variables  
   # etiqueta="descripcio"
   
   # extreure variables
-  vars<-extreure.variables(variable,conductor)
+  vars<-extreure.variables(variable,conductor,...)
   
   # Extreure etiquetes 
-  etiquetes_noves<-extreure.variables(variable,conductor,variable_camp=nou_nom)
+  etiquetes_noves<-extreure.variables(variable,conductor,variable_camp=nou_nom,...)
   
   # Canviar noms per etiqueta descripcio
   # setnames(dt, old = vars, new = etiquetes_noves)
