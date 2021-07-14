@@ -243,15 +243,16 @@ generar_mostra_fitxers<-function(directori="dades/SIDIAP",
                                  fitxer_poblacio="METPLUS_entregable_poblacio_20181126_190346.rds",
                                  mida_mostra=10000,
                                  prefix="test",
-                                 directori_test="mostra") {
+                                 directori_test="mostra",idp="idp") {
   
-  # directori="dades/SIDIAP"
-  # fitxer_poblacio="METPLUS_entregable_poblacio_20181126_190346.rds"
-  # mida_mostra=70000
-  # prefix="test"
-  # directori_test="mostra_test"
+  # directori="dades"
+  # fitxer_poblacio="pacients.txt"
+  # mida_mostra=5000
+  # prefix=""
+  # directori_test="mostra"
+  # idp="IDP"
   
-  
+
   # Funció interna per llegir fitxer txt o rds
   LLEGIR.fitxer<-function(n,directori,fitxer) {
     
